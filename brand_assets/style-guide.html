@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amygdala — Brand Style Guide</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--crt-black-deep);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* SVG noise texture for depth (guardrails) */
+  body::before {
+    content:""; position: fixed; inset:0; pointer-events:none; z-index:0; opacity:.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: var(--space-7) var(--space-5) var(--space-8); position: relative; z-index:1; }
+  header.hero {
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-bottom: var(--space-7);
+    background:
+      radial-gradient(90% 120% at 15% 0%, rgba(61,240,122,0.10), transparent 55%),
+      radial-gradient(80% 120% at 100% 100%, rgba(255,194,77,0.06), transparent 50%),
+      var(--bg-elevated);
+    box-shadow: var(--elev-float);
+  }
+  header.hero img { width: 100%; max-width: 720px; display:block; }
+  .tagline { color: var(--text-muted); font-size: var(--fs-small); letter-spacing:.14em; text-transform: uppercase; margin-top: var(--space-4); }
+  h2.section {
+    font-family: var(--font-display); font-size: var(--fs-h2);
+    color: var(--text-strong); letter-spacing: var(--tracking-display);
+    margin: var(--space-8) 0 var(--space-2);
+    text-shadow: 0 0 8px var(--glow-green-2);
+  }
+  h2.section .num { color: var(--green-dim); font-family: var(--font-pixel); margin-right: var(--space-3); }
+  .lead { color: var(--text-muted); max-width: 64ch; margin: 0 0 var(--space-5); }
+  .grid { display: grid; gap: var(--space-4); }
+  .card {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: var(--space-5);
+    box-shadow: var(--elev-2);
+  }
+  /* ---- swatches ---- */
+  .swatches { grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); }
+  .swatch { border-radius: var(--radius-md); overflow: hidden; border:1px solid var(--border); background: var(--bg-elevated); }
+  .swatch .chip { height: 76px; }
+  .swatch .meta { padding: var(--space-3); font-size: var(--fs-small); }
+  .swatch .meta b { display:block; color: var(--text-strong); font-family: var(--font-pixel); font-size: 1rem; letter-spacing:.03em; }
+  .swatch .meta code { color: var(--text-muted); }
+  /* ---- type specimens ---- */
+  .specimen { padding: var(--space-5) 0; border-bottom: 1px dashed var(--border); }
+  .specimen:last-child { border-bottom: 0; }
+  .specimen small { color: var(--text-muted); font-family: var(--font-pixel); letter-spacing:.06em; }
+  /* ---- effect demo ---- */
+  .demo-screen {
+    height: 260px; border-radius: var(--radius-lg); display:flex; align-items:center; justify-content:center;
+    text-align:center; border:1px solid var(--border-strong);
+  }
+  .demo-screen h3 { font-family: var(--font-display); font-size: 2.2rem; color: var(--text-strong); margin:0; }
+  .demo-screen p { color: var(--text); font-family: var(--font-pixel); font-size: 1.2rem; margin:.4rem 0 0; }
+  .controls { display:flex; flex-wrap:wrap; gap: var(--space-2); margin-bottom: var(--space-4); align-items:center; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius: var(--radius-md); overflow:hidden; }
+  /* ---- buttons ---- */
+  .btn {
+    font-family: var(--font-pixel); font-size: 1.05rem; letter-spacing:.04em;
+    padding: 10px 18px; border-radius: var(--radius-sm); cursor: pointer;
+    background: var(--bg-floating); color: var(--text-strong);
+    border: 1px solid var(--border-strong);
+    transition: transform var(--dur-fast) var(--ease-spring),
+                box-shadow var(--dur-med) var(--ease-out),
+                background var(--dur-fast) var(--ease-out);
+    box-shadow: 0 0 0 var(--glow-green-3);
+  }
+  .btn:hover { background: var(--green-deep); box-shadow: 0 0 16px var(--glow-green-2); transform: translateY(-1px); }
+  .btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; box-shadow: 0 0 0 4px var(--glow-green-3); }
+  .btn:active { transform: translateY(1px) scale(.98); }
+  .btn[aria-pressed="true"] { background: var(--green-base); color: var(--crt-black); border-color: var(--green-bright); box-shadow: 0 0 18px var(--glow-green-1); }
+  .btn.amber { border-color: var(--amber-dim); color: var(--amber-alert); }
+  .btn.amber:hover { background: rgba(255,194,77,0.12); box-shadow: 0 0 16px var(--glow-amber-1); }
+  .seg .btn { border: 0; border-radius: 0; box-shadow:none; }
+  .toggle { display:inline-flex; align-items:center; gap: var(--space-2); font-family: var(--font-pixel); font-size:1rem; color: var(--text-muted); }
+  /* ---- galleries ---- */
+  .gallery img { width:100%; display:block; border-radius: var(--radius-md); }
+  .two { grid-template-columns: 1fr 1fr; }
+  .note { font-size: var(--fs-small); color: var(--text-muted); }
+  .kbd { font-family: var(--font-pixel); color: var(--text-strong); background: var(--green-deep); padding: 1px 7px; border-radius: 4px; border:1px solid var(--border); }
+  footer { margin-top: var(--space-8); padding-top: var(--space-5); border-top:1px solid var(--border); color: var(--text-muted); font-size: var(--fs-small); }
+  @media (max-width: 680px){ .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero crt-screen crt-scanlines crt-curve crt--full crt-glow-box">
+    <img src="logo.svg" alt="Amygdala logo">
+    <p class="tagline">Brand &amp; Asset System · v1 · Retro-terminal card club</p>
+  </header>
+
+  <p class="lead">The single source of truth for Amygdala's visual identity: a green-phosphor
+  CRT world that should feel like one console, not a web app. Every token, effect, and asset here is
+  built from <code>tokens.css</code>. Drop this folder in as <span class="kbd">brand_assets/</span>.</p>
+
+  <!-- COLOR -->
+  <h2 class="section"><span class="num">01</span>Color — phosphor palette</h2>
+  <p class="lead">Green on black, with a single amber accent reserved for alerts. Contrast within the
+  green ramp keeps body text readable against the CRT black (WCAG-minded, PRD §6).</p>
+  <div class="grid swatches" id="swatches"></div>
+
+  <!-- TYPE -->
+  <h2 class="section"><span class="num">02</span>Typography</h2>
+  <p class="lead">Three roles: <b>Amoria</b> for display/logo, a clean sans (Space Grotesk) for body,
+  and a pixel face (VT323) for card ranks and HUD. Tight tracking on large headings, generous body
+  line-height.</p>
+  <div class="card">
+    <div class="specimen"><small>DISPLAY · Amoria · tracking -0.03em</small>
+      <div class="brand-display crt-glow">Deal me in</div></div>
+    <div class="specimen"><small>BODY · Space Grotesk · line-height 1.7</small>
+      <p class="brand-body" style="margin:.4rem 0 0">The dealer stands on 17. Hidden cards live only on
+      the server — the client never sees what it shouldn't. Play a hand in seconds, no account required.</p></div>
+    <div class="specimen"><small>PIXEL · VT323 · ranks &amp; HUD</small>
+      <div class="brand-pixel" style="font-size:2rem;color:var(--text-strong)">A K Q J 10 &nbsp; ♠ ♥ ♦ ♣ &nbsp; BET 250</div></div>
+  </div>
+
+  <!-- CRT EFFECTS -->
+  <h2 class="section"><span class="num">03</span>CRT effects &amp; intensity</h2>
+  <p class="lead">Scanlines, phosphor glow, flicker, curvature, and chromatic aberration are independent
+  utilities so Settings can offer <b>Off / Subtle / Full</b> plus reduce-motion and reduce-flicker
+  (PRD §5.7). Try them live:</p>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="CRT intensity">
+      <button class="btn" data-int="off">Off</button>
+      <button class="btn" data-int="subtle">Subtle</button>
+      <button class="btn" data-int="full" aria-pressed="true">Full</button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="rf"> reduce flicker</label>
+    <label class="toggle"><input type="checkbox" id="rm"> reduce motion</label>
+  </div>
+  <div id="demo" class="demo-screen crt-screen crt-scanlines crt-curve crt-flicker crt--full">
+    <div>
+      <h3 class="crt-glow crt-aberration">◆ SYSTEM READY ◆</h3>
+      <p class="crt-breathe">insert coin — press <span class="kbd">START</span></p>
+    </div>
+  </div>
+
+  <!-- LOGO -->
+  <h2 class="section"><span class="num">04</span>Logo</h2>
+  <p class="lead">Full lockup for headers; compact mark for avatars, favicons, and the app icon. The
+  mascot is part of the mark — never separate it from the console frame in the compact version.</p>
+  <div class="grid two">
+    <div class="card gallery"><img src="logo.svg" alt="Full logo lockup"><p class="note">logo.svg — horizontal lockup</p></div>
+    <div class="card gallery" style="display:flex;flex-direction:column;align-items:center">
+      <img src="logo-mark.svg" alt="Compact logo mark" style="max-width:220px"><p class="note">logo-mark.svg — square app mark</p></div>
+  </div>
+
+  <!-- DOG -->
+  <h2 class="section"><span class="num">05</span>The mascot — narrator states</h2>
+  <p class="lead">The mascot is the product's voice across the whole UI. One master character maps to
+  eight states, each carrying a data-driven line so content is editable and localizable (PRD §5.5).
+  Mood is expressed through pose, brightness, and the emote badge — never a wall of text.</p>
+  <div class="card gallery"><img src="dog-sprite.svg" alt="Mascot narrator states with sample lines"></div>
+  <p class="note" style="margin-top:var(--space-3)">Full state set: idle · explaining · prompting · thinking ·
+  reacting_win · reacting_loss · reacting_neutral · celebrating. Lines shown are examples from the
+  event→state→line table; narration is always skippable and mutable (§5.5, §5.7).</p>
+
+  <!-- CARDS -->
+  <h2 class="section"><span class="num">06</span>Cards — the filled-vs-outlined rule</h2>
+  <p class="lead">Red vs. black doesn't exist in a monochrome palette, so suit is encoded by <b>fill</b>:
+  spades &amp; clubs render <b>solid</b>, hearts &amp; diamonds render <b>outlined</b> — always beside the
+  rank letter, so a suit is never ambiguous (PRD §5.6).</p>
+  <div class="card gallery"><img src="cards.svg" alt="Sample cards demonstrating the suit rule"></div>
+
+  <!-- COMPONENTS -->
+  <h2 class="section"><span class="num">07</span>Interactive states</h2>
+  <p class="lead">Every clickable element carries hover, focus-visible, and active states. Amber is only
+  for destructive or alert actions.</p>
+  <div class="card">
+    <div class="controls" style="margin:0">
+      <button class="btn">Hit</button>
+      <button class="btn" aria-pressed="true">Stand</button>
+      <button class="btn">Double</button>
+      <button class="btn amber">Leave table</button>
+    </div>
+  </div>
+
+  <footer>
+    <p><b style="color:var(--text-strong)">Font note.</b> Amoria is bundled at
+    <span class="kbd">fonts/Amoria.woff2</span> (converted from the supplied .otf) and loads via
+    <code>@font-face</code> in tokens.css; the display stack falls back to VT323 if it's ever missing.</p>
+    <p class="note">Assets in this folder: tokens.css · logo.svg · logo-mark.svg · mascot.png · dog.svg ·
+    dog-sprite.svg · cards.svg · style-guide.html. Generators (_gen_*.py) reproduce the SVGs.</p>
+  </footer>
+</div>
+
+<script>
+  var demo = document.getElementById('demo');
+  var intBtns = document.querySelectorAll('[data-int]');
+  function setIntensity(v){
+    demo.classList.remove('crt--off','crt--subtle','crt--full');
+    demo.classList.add('crt--'+v);
+    intBtns.forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.int===v ? 'true':'false'); });
+  }
+  intBtns.forEach(function(b){ b.addEventListener('click', function(){ setIntensity(b.dataset.int); }); });
+  document.getElementById('rf').addEventListener('change', function(e){
+    demo.classList.toggle('reduce-flicker', e.target.checked); });
+  document.getElementById('rm').addEventListener('change', function(e){
+    demo.classList.toggle('reduce-motion', e.target.checked); });
+
+  // build swatches from tokens
+  var tokens = [
+    ['--green-base','#3DF07A','Base green','Primary UI + text'],
+    ['--green-bright','#C6FFDA','Bright','Highlights, focus, active glyphs'],
+    ['--green-dim','#1A7A40','Dim','Secondary text, borders'],
+    ['--green-deep','#0C3E22','Deep','Faint fills, inset surfaces'],
+    ['--crt-black','#05090B','Screen black','Background'],
+    ['--crt-black-deep','#020504','Bezel black','Behind-screen'],
+    ['--amber-alert','#FFC24D','Amber alert','The one accent — alerts only'],
+  ];
+  var host = document.getElementById('swatches');
+  tokens.forEach(function(t){
+    var el = document.createElement('div');
+    el.className='swatch';
+    el.innerHTML = '<div class="chip" style="background:'+t[1]+';box-shadow:inset 0 0 24px rgba(0,0,0,.5)"></div>'+
+      '<div class="meta"><b>'+t[2]+'</b><code>'+t[1]+'</code><br><code>var('+t[0]+')</code>'+
+      '<div class="note" style="margin-top:6px">'+t[3]+'</div></div>';
+    host.appendChild(el);
+  });
+</script>
+</body>
+</html>

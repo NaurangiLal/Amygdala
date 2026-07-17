@@ -1,0 +1,26 @@
+# A static deploy serves EVERY file it ships — anything listed here would
+# otherwise be downloadable from the live site.
+
+# Dev tooling — the app never loads these (app/ and game_rules/ .mjs are the app).
+node_modules
+temporary screenshots
+serve.mjs
+screenshot.mjs
+package.json
+package-lock.json
+.claude
+
+# Asset-generation scripts and their source sheet.
+brand_assets/_gen_*.py
+brand_assets/_slice_dog_v2.py
+brand_assets/dog-sprite*.png
+brand_assets/style-guide.html
+
+# Desktop font source. Only the .woff2 ships — a live site serving the raw .otf
+# is handing out the installable font, which no foundry EULA allows.
+AMORIA-BF64a2f6809ce9e.otf
+
+# Internal docs — not part of the product.
+PRD.md
+CLAUDE.md
+Amygdala Wireframe.dc.html

@@ -1,0 +1,14 @@
+{
+  "name": "amygdala",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Amygdala — a retro-terminal card club. Phase 1: Blackjack.",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "shot": "node screenshot.mjs http://localhost:3000"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.3.0"
+  }
+}

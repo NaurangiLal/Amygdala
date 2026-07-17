@@ -1,0 +1,240 @@
+/* ============================================================================
+   Amygdala — Brand Design Tokens
+   Retro green-phosphor CRT theme. Source of truth for color, type, spacing,
+   elevation, and CRT effect utilities. Import this everywhere.
+   ----------------------------------------------------------------------------
+   Usage:  <link rel="stylesheet" href="brand_assets/tokens.css">
+   Then reference variables:  color: var(--green-base);
+   ========================================================================== */
+
+/* ---- Fonts -------------------------------------------------------------- */
+/* @import MUST be the first rule in the file — the browser silently discards
+   an @import that appears after any other rule (including @font-face).
+   Pixel face via Google Fonts; swap for a locally hosted file before shipping
+   if you want zero external deps. Space Grotesk was dropped deliberately: a
+   modern sans anywhere on screen betrays the era — every non-wordmark glyph
+   is the terminal face now. */
+@import url("https://fonts.googleapis.com/css2?family=VT323&display=swap");
+
+/* Amoria is the display/logo face (PRD §5.6), bundled at fonts/Amoria.woff2
+   (converted from the supplied .otf). */
+@font-face {
+  font-family: "Amoria";
+  src: url("fonts/Amoria.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+
+:root {
+  /* ---- Core phosphor palette (PRD §5.6) -------------------------------- */
+  --green-base:    #3DF07A;   /* primary UI + text green                     */
+  --green-bright:  #C6FFDA;   /* highlights, active glyphs, focus            */
+  --green-dim:     #1A7A40;   /* secondary text, borders, disabled          */
+  --green-deep:    #0C3E22;   /* faint fills, inset surfaces                 */
+  --crt-black:     #05090B;   /* screen background                          */
+  --crt-black-deep:#020504;   /* bezel / behind-screen black                */
+  --amber-alert:   #FFC24D;   /* the single warning/alert accent            */
+  --amber-dim:     #8A6520;   /* dim amber for alert borders                */
+
+  /* ---- Derived glows (color-tinted, low opacity per guardrails) -------- */
+  --glow-green-1:  rgba(61, 240, 122, 0.55);
+  --glow-green-2:  rgba(61, 240, 122, 0.28);
+  --glow-green-3:  rgba(61, 240, 122, 0.12);
+  --glow-amber-1:  rgba(255, 194, 77, 0.50);
+
+  /* ---- Semantic aliases ------------------------------------------------ */
+  --bg:            var(--crt-black);
+  --bg-elevated:   #081410;   /* base -> elevated -> floating layering       */
+  --bg-floating:   #0C1D16;
+  --text:          var(--green-base);
+  --text-strong:   var(--green-bright);
+  --text-muted:    var(--green-dim);
+  --border:        rgba(61, 240, 122, 0.22);
+  --border-strong: rgba(61, 240, 122, 0.45);
+  --focus-ring:    var(--green-bright);
+  --danger:        var(--amber-alert);
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-display: "Amoria", "VT323", ui-serif, serif; /* wordmark ONLY       */
+  --font-body:    "VT323", ui-monospace, monospace;
+  --font-pixel:   "VT323", ui-monospace, monospace; /* card rank/suit, HUD   */
+
+  --tracking-display: -0.03em;  /* tight tracking on the wordmark            */
+  --leading-body:      1.5;     /* VT323 runs tall; 1.7 reads gappy          */
+
+  --fs-display: clamp(2.75rem, 6vw, 5rem);
+  --fs-h1:      clamp(2rem, 4vw, 3rem);
+  --fs-h2:      1.75rem;
+  --fs-h3:      1.25rem;
+  --fs-body:    1rem;
+  --fs-small:   0.8125rem;
+
+  /* ---- Spacing scale (intentional tokens, not random steps) ------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---- Radius (square: a character generator has no border-radius) ----- */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-card: 3px;
+
+  /* ---- Elevation: phosphor halation, not drop shadows. A CRT has no
+     directional light source — depth reads as brightness, hard rules and a
+     tight glow bloom, never a soft offset blur. ---- */
+  --elev-1:
+    0 0 0 1px var(--border);
+  --elev-2:
+    0 0 0 1px var(--border),
+    0 0 14px var(--glow-green-3);
+  --elev-float:
+    0 0 0 1px var(--border-strong),
+    0 0 22px var(--glow-green-2);
+
+  /* ---- Motion (spring-style easing; animate transform/opacity only) ---- */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast:    120ms;
+  --dur-med:     240ms;
+  --dur-slow:    420ms;
+}
+
+/* ============================================================================
+   Base type styles
+   ========================================================================== */
+.brand-display {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  letter-spacing: var(--tracking-display);
+  line-height: 1.02;
+  color: var(--text-strong);
+  text-shadow: 0 0 6px var(--glow-green-1), 0 0 22px var(--glow-green-2);
+}
+.brand-body {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text);
+}
+.brand-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+   CRT EFFECT UTILITIES
+   Layer these on a screen container. Each is independent so the settings panel
+   (PRD §5.7: Off / Subtle / Full, reduce-motion, reduce-flicker) can toggle
+   them individually. Attach to a positioned parent; effects use ::before/::after.
+   ========================================================================== */
+
+/* Screen shell: phosphor glow + optional curvature vignette */
+.crt-screen {
+  position: relative;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(61,240,122,0.05), transparent 60%),
+    radial-gradient(140% 140% at 50% 120%, rgba(61,240,122,0.06), transparent 55%),
+    var(--crt-black);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Scanlines */
+.crt-scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  /* 3px gap + 1px line, repeating every 4px — chunkier than the original 3px
+     cycle so the raster reads at full-bleed sizes instead of averaging out. */
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0)     0px,
+    rgba(0,0,0,0)     3px,
+    rgba(0,0,0,0.32)  3px,
+    rgba(0,0,0,0.32)  4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* Subtle screen curvature + edge vignette */
+.crt-curve::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.55),
+    inset 0 0 140px rgba(0,0,0,0.35);
+  background:
+    radial-gradient(110% 110% at 50% 50%, transparent 70%, rgba(0,0,0,0.35) 100%);
+}
+
+/* Phosphor bloom on any glowing element */
+.crt-glow {
+  text-shadow: 0 0 4px var(--glow-green-1), 0 0 14px var(--glow-green-2);
+}
+.crt-glow-box {
+  box-shadow: 0 0 12px var(--glow-green-2), inset 0 0 8px var(--glow-green-3);
+}
+
+/* Flicker (kept gentle; disabled by reduce-flicker / reduce-motion) */
+@keyframes crt-flicker {
+  0%, 100% { opacity: 1; }
+  92%      { opacity: 0.96; }
+  94%      { opacity: 1; }
+  96%      { opacity: 0.94; }
+  98%      { opacity: 1; }
+}
+.crt-flicker { animation: crt-flicker 6s steps(60) infinite; }
+
+/* Slow phosphor breathe for idle ambience (transform/opacity only) */
+@keyframes crt-breathe {
+  0%, 100% { opacity: 0.92; }
+  50%      { opacity: 1; }
+}
+.crt-breathe { animation: crt-breathe 4s var(--ease-out) infinite; }
+
+/* Chromatic aberration (Full intensity only) */
+.crt-aberration {
+  text-shadow:
+    0.6px 0 0 rgba(255,0,90,0.35),
+   -0.6px 0 0 rgba(0,200,255,0.30),
+    0 0 4px var(--glow-green-1);
+}
+
+/* ---- Intensity presets: put on the .crt-screen root ------------------- */
+.crt--off .crt-scanlines::before,
+.crt--off .crt-curve::after { display: none; }
+.crt--off .crt-flicker { animation: none; }
+
+.crt--subtle .crt-scanlines::before { opacity: 0.5; }
+.crt--subtle .crt-flicker { animation: none; }
+
+/* Full = defaults, all effects on */
+
+/* ---- Accessibility: respect system + app toggles (PRD §5.7) ----------- */
+@media (prefers-reduced-motion: reduce) {
+  .crt-flicker, .crt-breathe { animation: none !important; }
+}
+.reduce-flicker .crt-flicker { animation: none !important; }
+.reduce-motion  .crt-flicker,
+.reduce-motion  .crt-breathe { animation: none !important; }
+
+/* ============================================================================
+   Focus + interactive states (every clickable element needs these)
+   ========================================================================== */
+.brand-focusable:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--glow-green-3);
+}

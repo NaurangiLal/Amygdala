@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en" class="crt--subtle">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amygdala — retro-terminal card club</title>
+<meta name="description" content="A retro-terminal card club. Pick a nickname, grab a seat, play a hand.">
+<link rel="icon" href="brand_assets/logo-mark.svg">
+<link rel="stylesheet" href="brand_assets/tokens.css">
+<style>
+/* ==========================================================================
+   Amygdala — Phase 1 (Blackjack). Every colour, font, space and shadow below
+   resolves to a token from brand_assets/tokens.css. Nothing is invented here.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+
+body {
+  background: var(--crt-black-deep);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient phosphor wash across the whole page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 45%, rgba(61,240,122,0.07), transparent 70%),
+    radial-gradient(90% 70% at 50% 120%, rgba(61,240,122,0.04), transparent 60%);
+}
+/* Grain, per the depth guardrail. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: .045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   THE TERMINAL — the whole page is the phosphor surface. No bezel, no drawn
+   monitor: the user's own screen is the tube (PRD goal, revised: "feels like
+   a single console" now means the browser window IS the console).
+   -------------------------------------------------------------------------- */
+.console {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tube {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+/* The raster covers the ENTIRE console — statusbar and foot included; a
+   phosphor surface with two clean strips reads as a web page with chrome.
+   z-index 50 lifts the overlays above the HUD bars (z 7); tokens.css rounds
+   the vignette for framed screens — full-bleed has no frame, so square it. */
+.console.crt-scanlines::before,
+.console.crt-curve::after { z-index: 50; border-radius: 0; }
+
+/* Bottom HUD strip: brand + the always-available controls. */
+.foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: rgba(12, 62, 34, .30);
+  position: relative;
+  z-index: 7;
+}
+.foot-brand {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: .14em;
+  color: var(--green-dim);
+}
+.foot-spacer { flex: 1; }
+.led {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green-base);
+  box-shadow: 0 0 8px var(--glow-green-1);
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   Status bar — the wireframe's window chrome, translated to console furniture.
+   -------------------------------------------------------------------------- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: rgba(12,62,34,.30);
+  font-family: var(--font-pixel);
+  font-size: .95rem;
+  letter-spacing: .1em;
+  color: var(--text-strong);
+  position: relative;
+  z-index: 7;
+  flex: none;
+}
+.statusbar .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green-deep);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.statusbar .dot.live { background: var(--green-base); box-shadow: 0 0 7px var(--glow-green-1); }
+.statusbar .title { margin-left: var(--space-2); }
+.statusbar .meta { margin-left: auto; color: var(--green-dim); letter-spacing: .06em; }
+
+/* --------------------------------------------------------------------------
+   Viewport + screens
+   -------------------------------------------------------------------------- */
+.viewport { position: relative; flex: 1; display: flex; }
+.screen {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  width: 100%;
+}
+.screen[data-active] { display: flex; }
+.screen--center { align-items: center; justify-content: center; gap: var(--space-5); }
+
+/* Screen entry. Transform + opacity only. */
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.screen[data-active] { animation: screen-in var(--dur-med) var(--ease-out); }
+.reduce-motion .screen[data-active] { animation: none; }
+
+/* --------------------------------------------------------------------------
+   Type roles
+   -------------------------------------------------------------------------- */
+.htitle {
+  font-family: var(--font-pixel);
+  font-size: 2rem;
+  font-weight: 400; /* VT323 has one weight; synthesized bold just smears */
+  letter-spacing: .04em;
+  text-transform: lowercase;
+  line-height: 1.1;
+  color: var(--text-strong);
+  margin: 0;
+  text-shadow: 0 0 8px var(--glow-green-2);
+}
+/* Screen titles are terminal output, so they carry the prompt. */
+.htitle::before {
+  content: "> ";
+  color: var(--green-dim);
+}
+.lbl {
+  font-family: var(--font-pixel);
+  font-size: .95rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--green-dim);
+}
+.hud { font-family: var(--font-pixel); font-size: 1rem; letter-spacing: .04em; }
+.muted { color: var(--text-muted); }
+.hint { font-family: var(--font-pixel); font-size: .95rem; color: var(--text-muted); letter-spacing: .04em; }
+
+/* --------------------------------------------------------------------------
+   Surfaces — base -> elevated -> floating (depth guardrail)
+   -------------------------------------------------------------------------- */
+.panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  box-shadow: var(--elev-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.panel--dashed { border-style: dashed; box-shadow: none; background: transparent; }
+.floating { background: var(--bg-floating); box-shadow: var(--elev-float); }
+.chipbox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-3);
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  background: rgba(12,62,34,.35);
+  color: var(--text);
+}
+.chipbox--strong { color: var(--text-strong); border-color: var(--border-strong); }
+.chipbox--amber { color: var(--amber-alert); border-color: var(--amber-dim); }
+
+.row { display: flex; align-items: center; gap: var(--space-3); }
+.row--between { justify-content: space-between; }
+.row--center { justify-content: center; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Panels size to their content — at full-bleed heights, flex:1 stretched them
+   into acres of empty phosphor. A terminal writes from the top and stops. */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
+.grid-room { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--space-5); align-items: start; flex: 1; }
+
+/* Emphasis on a single-weight terminal face is brightness, not boldness. */
+b, strong { font-weight: 400; color: var(--text-strong); }
+
+/* --------------------------------------------------------------------------
+   Controls — every clickable gets hover / focus-visible / active. No exceptions.
+   -------------------------------------------------------------------------- */
+.btn {
+  font-family: var(--font-pixel);
+  font-size: 1.05rem;
+  letter-spacing: .06em;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--bg-floating);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-med) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--green-deep); box-shadow: 0 0 16px var(--glow-green-2); transform: translateY(-1px); }
+.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; box-shadow: 0 0 0 4px var(--glow-green-3); }
+.btn:active { transform: translateY(1px) scale(.98); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
+.btn[disabled]:hover { transform: none; background: var(--bg-floating); box-shadow: none; }
+
+.btn--primary {
+  background: var(--green-base);
+  color: var(--crt-black);
+  border-color: var(--green-bright);
+  box-shadow: 0 0 18px var(--glow-green-2);
+  font-weight: 400;
+}
+.btn--primary:hover { background: var(--green-bright); box-shadow: 0 0 26px var(--glow-green-1); }
+.btn--amber { border-color: var(--amber-dim); color: var(--amber-alert); }
+.btn--amber:hover { background: rgba(255,194,77,.12); box-shadow: 0 0 16px var(--glow-amber-1); }
+.btn--ghost { background: transparent; border-color: var(--border); color: var(--text); }
+.btn--sm { padding: 5px 10px; font-size: .9rem; }
+.btn--link {
+  background: none; border: 0; padding: 4px 2px;
+  color: var(--text); font-family: var(--font-pixel); font-size: 1rem;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--border-strong);
+}
+.btn--link:hover { color: var(--text-strong); text-shadow: 0 0 8px var(--glow-green-2); }
+.btn--link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
+
+/* Text fields */
+.field {
+  border: 1px solid var(--border);
+  background: rgba(2,5,4,.6);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+  font-family: var(--font-pixel);
+  font-size: 1.05rem;
+  color: var(--text-strong);
+  display: flex;
+  align-items: center;
+  width: 100%;
+  transition: box-shadow var(--dur-med) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.field::placeholder { color: var(--green-dim); }
+.field:hover { border-color: var(--border-strong); }
+.field:focus, .field:focus-visible {
+  outline: none;
+  border-color: var(--green-bright);
+  box-shadow: 0 0 0 3px var(--glow-green-3), 0 0 14px var(--glow-green-2);
+}
+/* A select still needs to look like a select: appearance:none strips the caret,
+   so draw one back in. */
+select.field {
+  cursor: pointer;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%233DF07A' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+select.field option { background: var(--crt-black); color: var(--text-strong); }
+
+/* A label wrapping a select, styled as one field — matches the wireframe's
+   single "max players ▾ 4" row rather than splitting label and control. */
+.field-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  border: 1px solid var(--border);
+  background: rgba(2,5,4,.6);
+  border-radius: var(--radius-sm);
+  padding: 4px 4px 4px 12px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-med) var(--ease-out);
+}
+.field-row:hover { border-color: var(--border-strong); }
+.field-row:focus-within { border-color: var(--green-bright); box-shadow: 0 0 0 3px var(--glow-green-3); }
+.field-row > span { font-family: var(--font-pixel); font-size: 1.05rem; color: var(--text-muted); }
+.field-row select.field { width: auto; border: 0; background-color: transparent; box-shadow: none; }
+.field-row select.field:focus, .field-row select.field:focus-visible { box-shadow: none; border: 0; }
+
+/* Segmented control */
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
+.seg button {
+  font-family: var(--font-pixel);
+  font-size: .95rem;
+  letter-spacing: .06em;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 0;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.seg button:last-child { border-right: 0; }
+.seg button:hover:not([disabled]) { background: var(--green-deep); color: var(--text-strong); }
+.seg button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.seg button[aria-pressed="true"] {
+  background: var(--green-base);
+  color: var(--crt-black);
+  text-shadow: none;
+}
+.seg button[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* Toggle — inverse-video ON/OFF block, not a rounded pill. */
+.tog {
+  width: 66px; height: 26px; flex: none;
+  background: var(--crt-black);
+  border: 1px solid var(--border);
+  position: relative; cursor: pointer; padding: 0;
+  transition: box-shadow var(--dur-med) var(--ease-out);
+}
+.tog::after {
+  content: "OFF";
+  position: absolute; top: 2px; left: 2px; bottom: 2px; width: 29px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--green-deep);
+  color: var(--text-muted);
+  font-family: var(--font-pixel); font-size: .85rem; letter-spacing: .06em;
+  transition: transform var(--dur-med) var(--ease-out), background-color var(--dur-med) var(--ease-out);
+}
+.tog:hover { box-shadow: 0 0 12px var(--glow-green-3); }
+.tog:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.tog[aria-checked="true"] { border-color: var(--green-bright); box-shadow: 0 0 14px var(--glow-green-2); }
+.tog[aria-checked="true"]::after {
+  content: "ON";
+  transform: translateX(31px);
+  background: var(--green-base);
+  color: var(--crt-black);
+}
+
+/* Range — a square cursor block in a bordered trough. */
+.range {
+  -webkit-appearance: none; appearance: none;
+  width: 180px; height: 16px; cursor: pointer;
+  background: var(--crt-black);
+  border: 1px solid var(--border);
+  padding: 2px;
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 10px; border: 0; border-radius: 0;
+  background: var(--green-base);
+  box-shadow: 0 0 8px var(--glow-green-2);
+}
+.range::-moz-range-thumb {
+  width: 12px; height: 10px; border: 0; border-radius: 0;
+  background: var(--green-base);
+  box-shadow: 0 0 8px var(--glow-green-2);
+}
+.range:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
+
+/* --------------------------------------------------------------------------
+   Cards — the filled-vs-outlined suit rule (PRD §5.6). Suit glyph is always
+   paired with the rank, so it is never ambiguous without colour.
+   -------------------------------------------------------------------------- */
+.card {
+  width: 54px; height: 78px; flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, var(--bg-floating), var(--crt-black));
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 5px 6px;
+  font-family: var(--font-pixel);
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--text-strong);
+  box-shadow: var(--elev-1);
+  text-shadow: 0 0 6px var(--glow-green-2);
+}
+.card .s { align-self: flex-end; font-size: 1.3rem; }
+.card--sm { width: 34px; height: 48px; font-size: .85rem; padding: 3px 4px; border-radius: 3px; }
+.card--sm .s { font-size: .95rem; }
+.card--lg { width: 70px; height: 100px; font-size: 1.5rem; }
+.card--lg .s { font-size: 1.75rem; }
+.card--back {
+  background:
+    repeating-linear-gradient(45deg, var(--green-deep) 0 5px, rgba(12,62,34,.35) 5px 10px),
+    var(--crt-black);
+  border-color: var(--border);
+  box-shadow: var(--elev-1);
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(-16px) scale(.9) rotate(var(--fan, 0deg)); }
+  to   { opacity: 1; transform: translateY(var(--lift, 0)) scale(1) rotate(var(--fan, 0deg)); }
+}
+.card--dealt { animation: card-in var(--dur-slow) var(--ease-spring) backwards; }
+.reduce-motion .card--dealt { animation: none; }
+
+/* Fanned hand (wireframe 1e). Angle + lift are set per card from JS. */
+.hand { display: flex; align-items: flex-end; gap: var(--space-2); }
+.hand .card { transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0)); transform-origin: bottom center; }
+
+/* Betting chips */
+.chip {
+  width: 40px; height: 40px; border-radius: 50%; flex: none;
+  border: 2px dashed var(--border-strong);
+  background: var(--bg-floating);
+  color: var(--text-strong);
+  font-family: var(--font-pixel); font-size: .95rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-med) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.chip:hover { transform: translateY(-3px); box-shadow: 0 0 18px var(--glow-green-2); border-color: var(--green-bright); }
+.chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.chip:active { transform: translateY(0) scale(.94); }
+.chip[aria-pressed="true"] { border-style: solid; border-color: var(--green-bright); background: var(--green-deep); box-shadow: 0 0 16px var(--glow-green-2); }
+.chip--timer {
+  border-style: solid; border-color: var(--amber-dim); color: var(--amber-alert);
+  cursor: default; font-size: .9rem;
+}
+.chip--timer:hover { transform: none; box-shadow: none; border-color: var(--amber-dim); }
+.chip--timer.urgent { box-shadow: 0 0 16px var(--glow-amber-1); }
+
+/* --------------------------------------------------------------------------
+   The dog — docked narrator (PRD §5.5)
+   -------------------------------------------------------------------------- */
+.dogwrap {
+  position: absolute; right: var(--space-5); bottom: var(--space-4);
+  display: flex; align-items: flex-end; gap: var(--space-3);
+  z-index: 6; pointer-events: none;
+}
+.dogwrap[data-side="left"] { right: auto; left: var(--space-5); flex-direction: row-reverse; }
+.dogwrap[hidden] { display: none; }
+/* On screens that end in a full-width command bar, the dog sits above it —
+   docked in the same corner, but never covering an action. */
+.dogwrap[data-screen="table"], .dogwrap[data-screen="result"] { bottom: 76px; }
+
+.bubble {
+  position: relative;
+  background: var(--bg-floating);
+  border: 1px solid var(--border-strong);
+  color: var(--text-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  line-height: 1.35;
+  max-width: 216px;
+  box-shadow: var(--elev-2);
+  pointer-events: auto;
+}
+.bubble::after {
+  content: ""; position: absolute; right: -6px; bottom: 12px;
+  border: 6px solid transparent; border-left-color: var(--border-strong); border-right: 0;
+}
+.dogwrap[data-side="left"] .bubble::after {
+  right: auto; left: -6px; border-left: 0; border-right-color: var(--border-strong);
+}
+.bubble[hidden] { display: none; }
+.bubble .skip {
+  display: block; margin-top: 4px;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: var(--font-pixel); font-size: .85rem; color: var(--green-dim);
+}
+.bubble .skip:hover { color: var(--text-strong); }
+.bubble .skip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Sprite-sheet dog (brand_assets/dog/, sliced from "dog-sprite V2.png").
+   The element is 1em square and font-size is the display size, so the same
+   strips animate correctly at every dog size — one frame is exactly 1em. */
+.dog {
+  width: 1em; height: 1em; flex: none;
+  font-size: 84px;
+  background: url("brand_assets/dog/idle.png") 0 0 / 400% 100% no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 10px var(--glow-green-2));
+  pointer-events: auto;
+}
+.dog--sm { font-size: 40px; filter: none; }
+.dog--md { font-size: 58px; }
+
+/* One keyframe set per frame count; steps(N) walks the strip. A play-once
+   sequence with F frames uses steps(F-1) forwards, so it holds the final
+   frame instead of stepping off the end of the strip. */
+@keyframes dog-steps-2 { to { background-position-x: -2em; } }
+@keyframes dog-steps-3 { to { background-position-x: -3em; } }
+@keyframes dog-steps-4 { to { background-position-x: -4em; } }
+
+.dog[data-state="idle"]             { background-image: url("brand_assets/dog/idle.png");    background-size: 400% 100%; animation: dog-steps-4 1.6s steps(4) infinite; }
+.dog[data-state="thinking"]         { background-image: url("brand_assets/dog/look.png");    background-size: 400% 100%; animation: dog-steps-4 2.2s steps(4) infinite; }
+.dog[data-state="prompting"]        { background-image: url("brand_assets/dog/excited.png"); background-size: 400% 100%; animation: dog-steps-4 .8s steps(4) infinite; filter: drop-shadow(0 0 14px var(--glow-green-1)); }
+.dog[data-state="explaining"]       { background-image: url("brand_assets/dog/bark.png");    background-size: 300% 100%; animation: dog-steps-3 .9s steps(3) infinite; }
+.dog[data-state="reacting_win"]     { background-image: url("brand_assets/dog/happy.png");   background-size: 300% 100%; animation: dog-steps-3 .7s steps(3) infinite; filter: drop-shadow(0 0 18px var(--glow-green-1)); }
+.dog[data-state="reacting_loss"]    { background-image: url("brand_assets/dog/laydown.png"); background-size: 300% 100%; animation: dog-steps-2 1.4s steps(2) forwards; filter: drop-shadow(0 0 6px var(--glow-green-3)); }
+.dog[data-state="reacting_neutral"] { background-image: url("brand_assets/dog/sit.png");     background-size: 200% 100%; animation: dog-steps-2 1.8s steps(2) infinite; }
+.dog[data-state="celebrating"]      { background-image: url("brand_assets/dog/jump.png");    background-size: 400% 100%; animation: dog-steps-4 .8s steps(4) infinite, dog-jump-y .8s linear infinite; filter: drop-shadow(0 0 22px var(--glow-green-1)); }
+
+/* The slicer bottom-aligns frames (so loops don't bob), which flattens the one
+   animation whose meaning IS vertical motion. Restore jump's arc with stepped
+   plateaus that track the sheet's original frame elevations (0/21/42/0 px of
+   a 149px frame). Transform-only, so reduce-motion drops it cleanly. */
+@keyframes dog-jump-y {
+  0%, 24.9%  { transform: translateY(0); }
+  25%, 49.9% { transform: translateY(-.14em); }
+  50%, 74.9% { transform: translateY(-.28em); }
+  75%, 100%  { transform: translateY(0); }
+}
+
+.reduce-motion .dog { animation: none !important; }
+/* Frozen dogs still wear the meaningful pose, not frame 0 of the strip —
+   frame 0 of laydown is an upright sit, which would erase the loss state
+   for exactly the users who rely on the static rendering. */
+.reduce-motion .dog[data-state="reacting_loss"] { background-position-x: -2em; }
+.reduce-motion .dog[data-state="celebrating"]   { background-position-x: -2em; }
+
+/* --------------------------------------------------------------------------
+   Screen: boot / title (1a)
+   -------------------------------------------------------------------------- */
+.boot-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 7vw, 4.2rem);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+  color: var(--text-strong);
+  margin: 0;
+  text-shadow: 0 0 10px var(--glow-green-1), 0 0 30px var(--glow-green-2);
+}
+.boot-tagline {
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  letter-spacing: .22em;
+  color: var(--green-dim);
+  margin: 0;
+}
+.boot-log {
+  font-family: var(--font-pixel);
+  font-size: 1.05rem;
+  color: var(--text);
+  min-height: 1.5em;
+  margin: 0;
+}
+/* Aberration is a Full-only effect, but tokens.css ships .crt-aberration
+   ungated — so damp it back down at the lower intensities. */
+.crt--off .crt-aberration,
+.crt--subtle .crt-aberration {
+  text-shadow: 0 0 10px var(--glow-green-1), 0 0 30px var(--glow-green-2);
+}
+
+.caret { animation: caret 1s steps(2) infinite; }
+@keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .15; } }
+.reduce-motion .caret { animation: none; opacity: .6; }
+.skip-boot {
+  position: absolute; top: var(--space-4); right: var(--space-5); z-index: 7;
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--font-pixel); font-size: .95rem; color: var(--green-dim);
+  padding: 4px 8px; border-radius: 3px;
+}
+.skip-boot:hover { color: var(--text-strong); }
+.skip-boot:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.skip-boot[hidden] { display: none; }
+
+/* Power-on: the tube warming up. */
+@keyframes power-on {
+  0%   { opacity: 0; transform: scaleY(.004) scaleX(.9); filter: brightness(4); }
+  45%  { opacity: 1; transform: scaleY(.004) scaleX(1); filter: brightness(4); }
+  70%  { transform: scaleY(1) scaleX(1); filter: brightness(1.7); }
+  100% { transform: scaleY(1) scaleX(1); filter: brightness(1); }
+}
+.tube.powering { animation: power-on 900ms var(--ease-out); }
+.reduce-motion .tube.powering { animation: none; }
+
+/* --------------------------------------------------------------------------
+   Screen: lobby (1c) — room code entry
+   -------------------------------------------------------------------------- */
+.code-boxes { display: flex; gap: var(--space-2); }
+.code-boxes .field {
+  width: 38px; height: 46px; padding: 0;
+  justify-content: center; text-align: center;
+  font-size: 1.3rem; letter-spacing: 0;
+}
+.code-display {
+  flex: 1; letter-spacing: .3em; font-size: 1.2rem;
+  color: var(--text-strong); justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   Screen: room (1d) — seat roster
+   -------------------------------------------------------------------------- */
+.seat {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  padding: 8px 12px;
+  box-shadow: var(--elev-1);
+}
+.seat--empty { border-style: dashed; background: transparent; box-shadow: none; color: var(--text-muted); font-family: var(--font-pixel); }
+.badge-host { color: var(--green-bright); font-size: .8rem; font-family: var(--font-pixel); letter-spacing: .08em; }
+
+/* --------------------------------------------------------------------------
+   Screen: table (1e) — fanned arc
+   -------------------------------------------------------------------------- */
+.table-screen { gap: var(--space-3); }
+.dealer-block { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.opponents { display: flex; justify-content: center; gap: var(--space-6); flex-wrap: wrap; min-height: 62px; }
+.opponent { text-align: center; font-family: var(--font-pixel); font-size: .9rem; color: var(--text-muted); }
+.opponent[data-turn] { color: var(--text-strong); text-shadow: 0 0 8px var(--glow-green-2); }
+.opponent .cards { display: flex; gap: 3px; margin-top: 3px; }
+.you-block { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.actionbar { display: flex; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   Screen: result (1h)
+   -------------------------------------------------------------------------- */
+.result-banner {
+  border: 1px solid var(--green-bright);
+  border-radius: var(--radius-md);
+  background: var(--green-deep);
+  padding: 9px 24px;
+  font-family: var(--font-pixel);
+  font-size: 2.3rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+  text-shadow: 0 0 12px var(--glow-green-1);
+  box-shadow: var(--elev-float);
+}
+.result-banner[data-outcome="loss"], .result-banner[data-outcome="bust"] {
+  border-color: var(--amber-dim); color: var(--amber-alert);
+  background: rgba(138,101,32,.16);
+  text-shadow: 0 0 12px var(--glow-amber-1);
+}
+.result-banner[data-outcome="push"] {
+  border-color: var(--border-strong); color: var(--text);
+  background: var(--bg-floating); text-shadow: none;
+}
+@keyframes banner-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.result-banner { animation: banner-in var(--dur-med) var(--ease-spring); }
+.reduce-motion .result-banner { animation: none; }
+
+/* --------------------------------------------------------------------------
+   Screen: settings (1i) + account (1j)
+   -------------------------------------------------------------------------- */
+.setting { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.setting-name { font-family: var(--font-pixel); font-size: 1.05rem; color: var(--text-strong); }
+.setting-sub { font-family: var(--font-pixel); font-size: .85rem; color: var(--text-muted); letter-spacing: .04em; }
+
+.stat { flex: 1; text-align: center; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background: var(--bg-elevated); }
+.stat b { display: block; font-family: var(--font-pixel); font-size: 1.6rem; color: var(--text-strong); }
+.stat span { font-family: var(--font-pixel); font-size: .8rem; color: var(--text-muted); letter-spacing: .08em; }
+.stat--muted b { color: var(--text); }
+
+.history-row {
+  display: flex; justify-content: space-between; gap: var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-family: var(--font-pixel); font-size: .95rem;
+  background: var(--bg-elevated);
+}
+.pos { color: var(--green-bright); }
+.neg { color: var(--text-muted); }
+
+.divider { display: flex; align-items: center; gap: var(--space-3); }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.divider span { font-family: var(--font-pixel); font-size: .85rem; color: var(--text-muted); }
+
+.notice {
+  font-family: var(--font-pixel); font-size: .95rem; line-height: 1.45;
+  color: var(--text-strong);
+  background: var(--green-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+/* --------------------------------------------------------------------------
+   Utility + a11y
+   -------------------------------------------------------------------------- */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+[hidden] { display: none !important; }
+
+/* --------------------------------------------------------------------------
+   Responsive — fanned hands stay usable on narrow screens (PRD §6, §9)
+   -------------------------------------------------------------------------- */
+@media (max-width: 780px) {
+  .tube { min-height: 0; }
+  .grid-2, .grid-room { grid-template-columns: 1fr; gap: var(--space-4); }
+  .screen { padding: var(--space-4); }
+  .opponents { gap: var(--space-4); }
+  /* Tighten the fan instead of letting it overflow. */
+  .hand { gap: 0; }
+  .hand .card { margin-inline: -6px; }
+  /* The dedicated small-screen pattern (PRD §9): a floating dog has nowhere to
+     stand next to a fanned hand, so it becomes a narration strip under the
+     viewport instead. .dogwrap is already the last flex child of .tube, so
+     dropping position:absolute lands it exactly there. */
+  .dogwrap,
+  .dogwrap[data-side="left"],
+  .dogwrap[data-screen="table"],
+  .dogwrap[data-screen="result"] {
+    position: static;
+    inset: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--border);
+    background: rgba(12,62,34,.22);
+  }
+  .bubble { max-width: none; flex: 1; font-size: .9rem; }
+  .bubble::after { display: none; } /* a tail means nothing in a strip */
+  /* Size modifiers must survive this override (same specificity, later in
+     source would win otherwise — same hazard as the .card rule below). */
+  .dog:not(.dog--sm):not(.dog--md) { font-size: 58px; }
+  .actionbar .btn { flex: 1; padding: 10px 8px; }
+  .statusbar .meta { display: none; }
+  .foot { gap: var(--space-2); }
+  /* The bezel brand is decoration; the controls are not. Drop it before wrapping. */
+  .foot-brand { display: none; }
+}
+@media (max-width: 480px) {
+  /* Scoped so the size modifiers below still win — a bare `.card` rule here
+     would outrank .card--sm/.card--lg and blow up the opponent hands. */
+  .card:not(.card--sm):not(.card--lg) { width: 46px; height: 66px; font-size: 1rem; }
+  .card:not(.card--sm):not(.card--lg) .s { font-size: 1.1rem; }
+  .card--sm { width: 28px; height: 40px; font-size: .7rem; }
+  .card--sm .s { font-size: .8rem; }
+  .code-boxes { gap: 4px; }
+  .code-boxes .field { width: 100%; min-width: 0; }
+}
+</style>
+</head>
+<body>
+
+<main class="console crt-scanlines crt-curve">
+  <div class="tube crt-screen crt-flicker" id="tube">
+
+    <div class="statusbar">
+      <span class="dot live"></span>
+      <span class="title" id="statusTitle">AMYGDALA — TITLE</span>
+      <span class="meta" id="statusMeta">GUEST</span>
+    </div>
+
+    <div class="viewport">
+
+      <!-- ============ 1a · TITLE / CRT BOOT ============ -->
+      <section class="screen screen--center" data-screen="boot" data-active>
+        <button class="skip-boot" id="skipBoot" type="button">skip boot ▸</button>
+        <h1 class="boot-title crt-aberration">AMYGDALA</h1>
+        <p class="boot-tagline">RETRO-TERMINAL CARD GAMES</p>
+        <p class="boot-log" id="bootLog">&gt; booting phosphor display<span class="caret">▮</span></p>
+        <div class="row" style="gap: var(--space-4); margin-top: var(--space-1);">
+          <button class="btn btn--primary" data-go="identity" type="button">▶ PLAY AS GUEST</button>
+          <button class="btn" data-go="account" type="button">SIGN IN</button>
+        </div>
+      </section>
+
+      <!-- ============ 1b · NICKNAME / GUEST JOIN ============ -->
+      <section class="screen screen--center" data-screen="identity">
+        <h2 class="htitle">Enter a nickname</h2>
+        <div style="width: min(360px, 100%);">
+          <label class="sr-only" for="nickname">Nickname</label>
+          <input class="field" id="nickname" type="text" placeholder="your handle" maxlength="16" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="hint" id="nickHint">unique within room · profanity-filtered</p>
+        <div class="row" style="gap: var(--space-3);">
+          <button class="btn btn--primary" id="toCreate" type="button">+ CREATE ROOM</button>
+          <button class="btn" id="toJoin" type="button">JOIN WITH CODE</button>
+        </div>
+        <button class="btn--link" data-go="account" type="button">or sign up to save progress →</button>
+      </section>
+
+      <!-- ============ 1c · LOBBY — CREATE + JOIN ============ -->
+      <section class="screen" data-screen="lobby">
+        <h2 class="htitle">Start playing</h2>
+        <div class="grid-2">
+
+          <div class="panel">
+            <span class="lbl">Create a room</span>
+            <div class="row row--between">
+              <span class="hud muted">Game</span>
+              <div class="seg" id="gamePick" role="group" aria-label="Game type">
+                <button type="button" aria-pressed="true" data-game="blackjack">BLACKJACK</button>
+                <button type="button" aria-pressed="false" data-game="rummy" disabled>RUMMY ·soon</button>
+              </div>
+            </div>
+            <label class="field-row" for="maxPlayers">
+              <span>max players</span>
+              <select class="field" id="maxPlayers">
+                <option>2</option><option selected>4</option><option>6</option>
+              </select>
+            </label>
+            <button class="btn btn--primary" id="genCode" type="button">GENERATE ROOM CODE</button>
+            <div class="row" style="gap: var(--space-2);">
+              <span class="field code-display" id="roomCode">▮ ▮ ▮ ▮ ▮ ▮</span>
+              <button class="btn btn--sm" id="copyCode" type="button">COPY</button>
+              <button class="btn btn--sm" id="shareCode" type="button">SHARE</button>
+            </div>
+            <button class="btn btn--primary" id="enterRoom" type="button" hidden>ENTER ROOM →</button>
+          </div>
+
+          <div class="panel">
+            <span class="lbl">Join a room</span>
+            <p class="hint" style="margin: 0;">enter 6-character code</p>
+            <div class="code-boxes" id="codeEntry">
+              <input class="field" maxlength="1" aria-label="Code character 1" autocomplete="off" placeholder="▮">
+              <input class="field" maxlength="1" aria-label="Code character 2" autocomplete="off" placeholder="▮">
+              <input class="field" maxlength="1" aria-label="Code character 3" autocomplete="off" placeholder="▮">
+              <input class="field" maxlength="1" aria-label="Code character 4" autocomplete="off" placeholder="▮">
+              <input class="field" maxlength="1" aria-label="Code character 5" autocomplete="off" placeholder="▮">
+              <input class="field" maxlength="1" aria-label="Code character 6" autocomplete="off" placeholder="▮">
+            </div>
+            <button class="btn" id="joinRoom" type="button">JOIN ROOM →</button>
+            <p class="hint" style="margin-top: auto;">disconnected earlier?<br>rejoin your seat within the grace window.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ 1d · ROOM SETTINGS / WAITING ============ -->
+      <section class="screen" data-screen="room">
+        <div class="row row--between">
+          <h2 class="htitle">Room lobby</h2>
+          <div class="row" style="gap: var(--space-2);">
+            <span class="lbl">code</span>
+            <span class="chipbox chipbox--strong" id="roomCodeTag" style="letter-spacing:.25em; padding: 6px 12px;">7QK2XR</span>
+            <button class="btn btn--sm" id="copyCode2" type="button">COPY</button>
+          </div>
+        </div>
+
+        <div class="grid-room">
+          <div class="stack">
+            <span class="lbl" id="seatCount">Players (2 / 4)</span>
+            <div class="stack" id="roster" style="gap: var(--space-2);"></div>
+          </div>
+
+          <div class="panel">
+            <span class="lbl">Room settings <span style="color: var(--green-bright);">· host only</span></span>
+            <div class="row row--between">
+              <span class="hud muted">Max players</span>
+              <div class="seg" id="setMax" role="group" aria-label="Max players">
+                <button type="button" data-v="2">2</button>
+                <button type="button" data-v="4" aria-pressed="true">4</button>
+                <button type="button" data-v="6">6</button>
+              </div>
+            </div>
+            <div class="row row--between">
+              <label class="hud muted" for="startChips">Starting chips</label>
+              <select class="field" id="startChips" style="width: 108px;">
+                <option>500</option><option selected>1000</option><option>2500</option>
+              </select>
+            </div>
+            <div class="row row--between">
+              <span class="hud muted">Table speed</span>
+              <div class="seg" id="setSpeed" role="group" aria-label="Table speed">
+                <button type="button" data-v="slow">SLOW</button>
+                <button type="button" data-v="normal" aria-pressed="true">NORMAL</button>
+                <button type="button" data-v="fast">FAST</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="gap: var(--space-3);">
+          <button class="btn btn--primary" id="startGame" type="button" style="flex: 1; padding: 13px;">▶ START GAME</button>
+          <button class="btn" data-go="lobby" type="button" style="padding: 13px;">LEAVE</button>
+        </div>
+      </section>
+
+      <!-- ============ 1g · BETTING ROUND ============ -->
+      <section class="screen screen--center" data-screen="betting">
+        <div class="panel floating" style="width: min(440px, 100%); align-items: center; gap: var(--space-4); padding: var(--space-5);">
+          <h2 class="htitle">Place your bet</h2>
+          <div class="row" style="gap: var(--space-3);" id="chipRow">
+            <button class="chip" type="button" data-bet="5">5</button>
+            <button class="chip" type="button" data-bet="25">25</button>
+            <button class="chip" type="button" data-bet="100">100</button>
+            <button class="chip" type="button" data-bet="500">500</button>
+          </div>
+          <div class="row row--between" style="width: 100%;">
+            <span class="chipbox">bet <b class="pos" id="betAmount">0</b></span>
+            <span class="chipbox">balance <span id="betBalance">1000</span></span>
+          </div>
+          <div class="row" style="gap: var(--space-3); width: 100%;">
+            <button class="btn" id="clearBet" type="button" style="flex: 1;">CLEAR</button>
+            <button class="btn btn--primary" id="dealMeIn" type="button" style="flex: 2;">DEAL ME IN ▶</button>
+          </div>
+          <div class="row" style="gap: var(--space-2);">
+            <span class="chip chip--timer" id="betTimer" style="width: 30px; height: 30px; font-size: .8rem;">0:15</span>
+            <span class="hint">auto-deal on timeout</span>
+          </div>
+        </div>
+        <div class="row" style="gap: var(--space-4);" id="othersBetting"></div>
+      </section>
+
+      <!-- ============ 1e · BLACKJACK TABLE (fanned arc) ============ -->
+      <section class="screen table-screen" data-screen="table">
+        <div class="dealer-block">
+          <div class="row" style="gap: var(--space-2);">
+            <span class="lbl">Dealer</span>
+            <span class="chipbox" id="dealerTag">shows 10</span>
+          </div>
+          <div class="row" style="gap: 7px;" id="dealerCards"></div>
+        </div>
+
+        <div class="opponents" id="opponents"></div>
+
+        <div class="you-block">
+          <div class="hand" id="yourCards"></div>
+          <div class="row" style="gap: var(--space-2);">
+            <span class="lbl">You</span>
+            <span class="chipbox chipbox--strong" id="yourTotal">HAND · 18</span>
+            <span class="chipbox" id="yourBet">bet 100</span>
+          </div>
+        </div>
+
+        <div class="actionbar">
+          <button class="btn btn--primary" data-move="hit" type="button">HIT</button>
+          <button class="btn" data-move="stand" type="button">STAND</button>
+          <button class="btn" data-move="double" type="button">DOUBLE</button>
+          <button class="btn" data-move="split" type="button" disabled title="Split lands after v1">SPLIT</button>
+          <span class="chip chip--timer" id="turnTimer" style="margin-left: var(--space-2);">0:12</span>
+        </div>
+      </section>
+
+      <!-- ============ 1h · HAND RESOLUTION ============ -->
+      <section class="screen" data-screen="result" style="gap: var(--space-3);">
+        <div class="dealer-block">
+          <div class="row" style="gap: var(--space-2);">
+            <span class="lbl">Dealer</span>
+            <span class="chipbox" id="resultDealerTag">22 · BUST</span>
+          </div>
+          <div class="row" style="gap: var(--space-2);" id="resultDealerCards"></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-top: var(--space-1);">
+          <div class="result-banner" id="resultBanner" data-outcome="win">YOU WIN &nbsp;·&nbsp; +100</div>
+          <div class="hand" id="resultCards"></div>
+          <span class="chipbox chipbox--strong" id="resultTotal">HAND · 18</span>
+        </div>
+
+        <div class="row row--center" style="gap: var(--space-3); margin-top: auto;">
+          <button class="btn btn--primary" id="nextHand" type="button">NEXT HAND ▶</button>
+          <button class="btn btn--amber" data-go="lobby" type="button">LEAVE TABLE</button>
+        </div>
+      </section>
+
+      <!-- ============ 1i · SETTINGS & ACCESSIBILITY ============ -->
+      <section class="screen" data-screen="settings">
+        <div class="row" style="justify-content: space-between;">
+          <h2 class="htitle">Settings</h2>
+          <button class="btn btn--sm" data-back type="button">◂ BACK</button>
+        </div>
+
+        <div class="panel" style="gap: var(--space-4);">
+          <div class="setting">
+            <div>
+              <div class="setting-name">CRT intensity</div>
+              <div class="setting-sub">scanlines · glow · curvature · aberration</div>
+            </div>
+            <div class="seg" id="setCrt" role="group" aria-label="CRT intensity">
+              <button type="button" data-v="off">OFF</button>
+              <button type="button" data-v="subtle">SUBTLE</button>
+              <button type="button" data-v="full">FULL</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span class="setting-name">Reduce motion <span class="setting-sub" id="motionSub">· follows system</span></span>
+            <button class="tog" id="setMotion" type="button" role="switch" aria-label="Reduce motion"></button>
+          </div>
+          <div class="setting">
+            <span class="setting-name">Reduce flicker <span class="setting-sub">· independent</span></span>
+            <button class="tog" id="setFlicker" type="button" role="switch" aria-label="Reduce flicker"></button>
+          </div>
+        </div>
+
+        <div class="panel" style="gap: var(--space-4);">
+          <div class="setting">
+            <span class="setting-name">Mute dog</span>
+            <button class="tog" id="setMute" type="button" role="switch" aria-label="Mute dog"></button>
+          </div>
+          <div class="setting">
+            <span class="setting-name">Skip narration by default</span>
+            <button class="tog" id="setSkip" type="button" role="switch" aria-label="Skip narration by default"></button>
+          </div>
+          <div class="setting">
+            <label class="setting-name" for="setMaster">Master volume</label>
+            <input class="range" id="setMaster" type="range" min="0" max="100" value="60">
+          </div>
+          <div class="setting">
+            <label class="setting-name" for="setSfx">SFX volume</label>
+            <input class="range" id="setSfx" type="range" min="0" max="100" value="40">
+          </div>
+        </div>
+
+        <p class="hint" style="margin: 0;">persists → account: server · guest: local storage</p>
+      </section>
+
+      <!-- ============ 1j · ACCOUNT SIGN-UP + STATS ============ -->
+      <section class="screen" data-screen="account">
+        <div class="row" style="justify-content: space-between;">
+          <h2 class="htitle">Account</h2>
+          <button class="btn btn--sm" data-back type="button">◂ BACK</button>
+        </div>
+        <div class="grid-2">
+
+          <div class="panel">
+            <span class="lbl">Create account</span>
+            <p class="notice" style="margin: 0;">keep your current session &amp; chips — converting won't kick you from the room.</p>
+            <label class="sr-only" for="email">Email address</label>
+            <input class="field" id="email" type="email" placeholder="email address" autocomplete="email">
+            <button class="btn btn--primary" id="signup" type="button">CONTINUE →</button>
+            <div class="divider"><span>OR</span></div>
+            <button class="btn" type="button">◎ Continue with Google</button>
+            <button class="btn" type="button">◎ Continue with Apple</button>
+          </div>
+
+          <div class="panel">
+            <span class="lbl">Your profile</span>
+            <div class="row">
+              <span class="dog dog--md" data-state="idle"></span>
+              <div>
+                <div class="hud" style="font-size: 1.1rem; color: var(--text-strong);" id="profileName">shivansh</div>
+                <div class="hint" id="profileMeta">member · chips 900</div>
+              </div>
+            </div>
+            <div class="row" style="gap: var(--space-3);">
+              <div class="stat"><b id="statWins">24</b><span>WINS</span></div>
+              <div class="stat stat--muted"><b id="statLosses">17</b><span>LOSSES</span></div>
+              <div class="stat stat--muted"><b id="statPushes">3</b><span>PUSHES</span></div>
+            </div>
+            <span class="lbl" style="margin-top: var(--space-1);">Match history</span>
+            <div class="stack" style="gap: var(--space-2);" id="history"></div>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /viewport -->
+
+    <!-- The dog: one narrator, docked, across every screen (PRD §5.5) -->
+    <div class="dogwrap" id="dogwrap" data-side="right">
+      <div class="bubble" id="dogBubble" role="status" aria-live="polite">
+        <span id="dogLine"></span>
+        <button class="skip" id="dogSkip" type="button" hidden>skip ▸</button>
+      </div>
+      <div class="dog" id="dog" data-state="idle" role="img" aria-label="Amygdala's dog narrator"></div>
+    </div>
+
+  </div><!-- /tube -->
+
+  <div class="foot">
+    <span class="led"></span>
+    <span class="foot-brand">AMYGDALA</span>
+    <span class="foot-spacer"></span>
+    <button class="btn btn--sm btn--ghost" id="muteDogQuick" type="button">MUTE DOG</button>
+    <button class="btn btn--sm btn--ghost" id="settingsQuick" type="button">SETTINGS</button>
+  </div>
+</main>
+
+<script type="module" src="app/app.mjs"></script>
+</body>
+</html>

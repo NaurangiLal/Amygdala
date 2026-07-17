@@ -21,6 +21,16 @@ node screenshot.mjs http://localhost:3000 label      # -> ./temporary screenshot
 node screenshot.mjs http://localhost:3000 x --nav=table --width=390
 ```
 
+## Deploy
+
+Static — no build step, no runtime dependencies. `vercel.json` skips both the
+install and build commands (the only dependency is Puppeteer, which is dev-only
+and would otherwise drag Chromium into the build) and serves the repo root.
+
+`.vercelignore` matters more than it looks: a static deploy serves *every* file
+it ships, so dev tooling, the asset-generation scripts, the internal docs, and
+the desktop font source are all held back from the live site.
+
 ## Layout
 
 ```
@@ -40,9 +50,10 @@ brand_assets/           tokens.css is the source of truth for colour/type/effect
 
 Three ideas hold it together:
 
-**The console is the product.** Every screen is a channel inside one phosphor
-tube, not a page in a web app (PRD goal §2). The bezel, status bar, and footplate
-never change; only the viewport swaps.
+**The page is the tube.** Every screen is a channel inside one phosphor surface,
+not a page in a web app (PRD goal §2). Nothing frames the game but your own
+screen: the CRT raster runs edge to edge over the status bar and HUD strip
+alike, and only the viewport between them swaps.
 
 **Games are plug-ins.** `app.mjs` never imports Blackjack directly — it asks
 `game_rules/index.mjs` for a game and calls a fixed interface. Rummy (Phase 2)
@@ -83,9 +94,25 @@ the one outcome that happened. Say the word and they go in.
 it calls itself the source of truth and asks to be imported everywhere. Component
 styles are still inline in `index.html`.
 
-**One brand-asset bug fixed.** `tokens.css` had both dark stops of the scanline
+**Two brand-asset bugs fixed.** `tokens.css` had both dark stops of the scanline
 gradient at `3px`, giving the band zero height — scanlines never drew, which made
-CRT Off and Full look nearly identical. Now `2px` transparent + `1px` line.
+CRT Off and Full look nearly identical. It's now a `3px` gap + `1px` line, chunky
+enough to read at full-bleed sizes. Separately, its `@import` of the pixel font
+sat *after* an `@font-face` rule, so the browser silently discarded it and the
+entire UI rendered in a fallback sans; `@import` must come first in a stylesheet.
+
+**The dog is a sprite sheet, not a PNG.** `brand_assets/_slice_dog_v2.py` keys the
+white background out of the reference sheet and slices it into one strip per
+animation (`brand_assets/dog/`), masking each frame to its own component so
+neighbouring sparkles don't bleed in. CSS `steps()` walks the strips; each dog
+state maps to one. The element is `1em` square and `font-size` is the display
+size, so one frame is always exactly `1em` and every dog size animates correctly
+from one set of strips.
+
+**Amoria ships as a `.woff2` only.** The licensed desktop `.otf` is gitignored on
+purpose — serving the webfont is normal licensed use, republishing the
+installable font is not. `brand_assets/fonts/Amoria.woff2` is committed, so
+nothing here needs the `.otf` to run.
 
 **Chromatic aberration is gated to Full.** `tokens.css` ships `.crt-aberration`
 ungated; Settings advertises it as a Full-only effect, so `index.html` damps it

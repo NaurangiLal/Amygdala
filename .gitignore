@@ -1,0 +1,11 @@
+node_modules/
+temporary screenshots/
+
+# Vercel CLI local link state.
+.vercel
+
+# The installable desktop font. brand_assets/fonts/Amoria.woff2 (derived from
+# this file) is what the site actually loads and IS committed; this .otf is the
+# source you licensed and is deliberately not republished. Keep it locally —
+# any future webfont regen needs it.
+AMORIA-BF64a2f6809ce9e.otf

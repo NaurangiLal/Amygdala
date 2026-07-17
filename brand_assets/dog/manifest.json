@@ -1,0 +1,44 @@
+{
+  "frame": 149,
+  "animations": {
+    "idle": {
+      "frames": 4
+    },
+    "walk": {
+      "frames": 4
+    },
+    "run": {
+      "frames": 5
+    },
+    "happy": {
+      "frames": 3
+    },
+    "jump": {
+      "frames": 4
+    },
+    "wag": {
+      "frames": 4
+    },
+    "bark": {
+      "frames": 3
+    },
+    "sit": {
+      "frames": 2
+    },
+    "laydown": {
+      "frames": 3
+    },
+    "sleep": {
+      "frames": 1
+    },
+    "excited": {
+      "frames": 4
+    },
+    "shake": {
+      "frames": 2
+    },
+    "look": {
+      "frames": 4
+    }
+  }
+}

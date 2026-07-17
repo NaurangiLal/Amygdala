@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#efece5;font-family:'Architects Daughter',system-ui,sans-serif}
+  a{color:#2a6f9e}a:hover{color:#1c4f72}
+  .dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+  .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+  .dv-tid{font:700 11px ui-monospace,Menlo,monospace;padding:3px 8px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+  .dv-tname{font:600 15px/1.3 'Architects Daughter',sans-serif;color:#1a1a1a}
+  .dv-sub{margin:0 0 26px;font:13px/1.5 ui-monospace,monospace;color:rgba(0,0,0,.5);max-width:760px}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:42px 40px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+  .dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 13px/1.3 'Architects Daughter',sans-serif;color:rgba(0,0,0,.6)}
+  .dv-oid{font:700 11px ui-monospace,Menlo,monospace;padding:3px 8px;background:rgba(0,0,0,.09);color:#1a1a1a;border-radius:5px;text-decoration:none}
+  .dv-opt:target .dv-oid{background:#2a6f9e;color:#fff}
+  .dv-next{margin:26px 0 0;font:13px/1.6 ui-monospace,monospace;color:rgba(0,0,0,.5);max-width:820px}
+
+  /* ---- screen frame ---- */
+  .scr{width:864px;background:#fcfbf9;border:2px solid #23211d;border-radius:7px;box-shadow:5px 5px 0 rgba(0,0,0,.13);overflow:hidden;position:relative}
+  .scr-bar{display:flex;align-items:center;gap:8px;padding:8px 13px;background:#23211d;color:#efece5;font:600 12px/1 ui-monospace,monospace;letter-spacing:.03em}
+  .scr-bar .g{margin-left:auto;opacity:.55;font-weight:400;font-size:11px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#6f6a60}
+  .scr-body{position:relative;padding:24px;min-height:456px;display:flex;flex-direction:column;gap:16px;background:#fcfbf9}
+  .scr-dark{background:#131612}
+
+  /* ---- wireframe primitives ---- */
+  .lbl{font:700 10.5px ui-monospace,monospace;color:#6a655c;letter-spacing:.06em;text-transform:uppercase}
+  .htitle{font:400 26px/1 'Architects Daughter',sans-serif;color:#2a2a2a}
+  .htitle-lg{font:400 44px/.95 'Architects Daughter',sans-serif;color:#2a2a2a}
+  .wbox{border:1.5px solid #b7b3ab;background:#eeece6;border-radius:5px}
+  .field{border:1.5px solid #b7b3ab;background:#fff;border-radius:5px;padding:11px 12px;font:13px ui-monospace,monospace;color:#a49f95;display:flex;align-items:center}
+  .btn{border:1.6px solid #3a382f;border-radius:6px;padding:10px 16px;background:#f3f1ec;font:700 12px ui-monospace,monospace;color:#2a2a2a;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+  .btn-pri{background:#2f6d3a;color:#eafbe9;border-color:#204d29}
+  .btn-warn{background:#fbf3e2;border-color:#a9781a;color:#7c560c}
+  .btn-sm{padding:6px 10px;font-size:11px;border-radius:5px}
+  .ph{background:repeating-linear-gradient(45deg,#dedbd3,#dedbd3 7px,#e9e7e1 7px,#e9e7e1 14px);border:1.5px dashed #aeaaa0;display:flex;align-items:center;justify-content:center;text-align:center;color:#8a857c;font:10.5px/1.4 ui-monospace,monospace;padding:6px;border-radius:5px}
+  .bar{height:9px;background:#ddd9d1;border-radius:4px}
+  .row{display:flex;align-items:center;gap:10px}
+  .seg{display:inline-flex;border:1.5px solid #b7b3ab;border-radius:6px;overflow:hidden;font:700 11px ui-monospace,monospace}
+  .seg span{padding:7px 12px;color:#6a655c;border-right:1.5px solid #cdc9c0}
+  .seg span:last-child{border-right:0}
+  .seg span.on{background:#2f6d3a;color:#eafbe9}
+  .tog{width:38px;height:20px;border-radius:11px;background:#cdc9c0;position:relative;flex:none}
+  .tog::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+  .tog.on{background:#2f6d3a}.tog.on::after{left:20px}
+  .card{width:50px;height:72px;border:1.5px solid #3a382f;border-radius:5px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:5px;font:700 14px ui-monospace,monospace;color:#2a2a2a;flex:none}
+  .card .s{align-self:flex-end;font-size:16px}
+  .card.back{background:repeating-linear-gradient(45deg,#c7c3ba,#c7c3ba 5px,#d6d2c9 5px,#d6d2c9 10px);border-color:#8f8a80}
+  .chip{width:38px;height:38px;border-radius:50%;border:2.5px dashed #6a655c;background:#f3f1ec;display:flex;align-items:center;justify-content:center;font:700 11px ui-monospace,monospace;color:#4a463d;flex:none}
+  .swatch{width:26px;height:26px;border-radius:4px;border:1px solid rgba(0,0,0,.25)}
+
+  /* dog + bubble */
+  .dogwrap{position:absolute;right:20px;bottom:18px;display:flex;align-items:flex-end;gap:10px;z-index:6}
+  .dogwrap.left{right:auto;left:20px;flex-direction:row-reverse}
+  .bubble{position:relative;background:#23211d;color:#a9f0a0;border-radius:9px;padding:9px 12px;font:12px/1.35 ui-monospace,monospace;max-width:216px}
+  .bubble::after{content:"";position:absolute;right:-6px;bottom:12px;border:6px solid transparent;border-left-color:#23211d;border-right:0}
+  .dogwrap.left .bubble::after{right:auto;left:-6px;border-left:0;border-right-color:#23211d}
+  .dog{width:62px;height:62px;flex:none;border-radius:7px;background:#0f140e url(brand_assets/mascot.png) center/contain no-repeat;font-size:0;overflow:hidden}
+
+  /* annotation pins + notes */
+  .pin{position:absolute;width:21px;height:21px;border-radius:50%;background:#2a6f9e;color:#fff;font:700 11px ui-monospace,monospace;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35);z-index:7}
+  .notes{width:864px;display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .note{display:flex;gap:9px;align-items:flex-start;font:400 13px/1.42 'Architects Daughter',sans-serif;color:#38342d}
+  .note .n{flex:none;width:19px;height:19px;border-radius:50%;background:#2a6f9e;color:#fff;font:700 10px ui-monospace,monospace;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .note code{font:600 11px ui-monospace,monospace;color:#7c560c;background:#f6efe0;padding:1px 4px;border-radius:3px}
+  .mut{color:#a49f95}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Amygdala — Phase 1 (Blackjack) flow, grey-box wireframes</span></div>
+  <p class="dv-sub">Desktop screens for the full guest journey: boot → join → lobby → table → resolution, plus settings and accounts. Blue pins mark regions annotated against the PRD below each screen. <a class="dv-oid" href="#1e">1e</a> and <a class="dv-oid" href="#1f">1f</a> are two takes on the Blackjack table.</p>
+  <div class="dv-opts">
+
+    <!-- ================= 1a TITLE / BOOT ================= -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Title / CRT boot</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> AMYGDALA — TITLE<span class="g">§5.1 · §5.6</span></div>
+        <div class="scr-body scr-dark" style="align-items:center;justify-content:center;gap:22px;color:#a9f0a0">
+          <div class="pin" style="top:16px;right:18px">1</div>
+          <div class="pin" style="top:34%;left:50%;transform:translateX(120px)">3</div>
+          <div style="position:absolute;top:14px;right:44px;font:11px ui-monospace,monospace;color:#5f8a58">skip boot ▸</div>
+          <div style="font:400 52px/1 'Architects Daughter',sans-serif;color:#bff5b4;text-shadow:0 0 12px rgba(120,240,110,.4)">AMYGDALA</div>
+          <div style="font:12px ui-monospace,monospace;color:#5f8a58;letter-spacing:.2em">RETRO-TERMINAL CARD GAMES</div>
+          <div style="font:13px ui-monospace,monospace;color:#8fd985">&gt; booting phosphor display<span style="opacity:.6">▮</span></div>
+          <div class="row" style="gap:14px;margin-top:6px;position:relative"><div class="pin" style="top:-14px;left:-14px">2</div>
+            <div class="btn btn-pri">▶ PLAY AS GUEST</div>
+            <div class="btn" style="background:#1c2419;color:#a9f0a0;border-color:#3f5a3a">SIGN IN</div>
+          </div>
+          <div class="row" style="gap:8px;margin-top:20px;align-items:center">
+            <span style="font:9px ui-monospace,monospace;color:#5f8a58">THEME TOKENS →</span>
+            <div class="swatch" style="background:#0d0f0c" title="black"></div>
+            <div class="swatch" style="background:#2f6d3a" title="base green"></div>
+            <div class="swatch" style="background:#8fd985" title="bright green"></div>
+            <div class="swatch" style="background:#3f5a3a" title="dim green"></div>
+            <div class="swatch" style="background:#c9962a" title="amber alert"></div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Boot animation is <b>optional & skippable</b> — persistent <code>skip boot ▸</code> respects reduce-motion. (§5.1, §5.7)</div></div>
+        <div class="note"><span class="n">2</span><div><b>Guest-first:</b> "Play as guest" is the primary action; sign-in is secondary. Target join→dealt &lt;30s. (§5.1, §10)</div></div>
+        <div class="note"><span class="n">3</span><div>CRT overlay: scanlines + phosphor glow. Token set shown = <code>black / base / bright / dim / amber</code>. (§5.6)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1b NICKNAME / GUEST JOIN ================= -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Nickname + guest join</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> IDENTITY<span class="g">§5.1</span></div>
+        <div class="scr-body" style="align-items:center;justify-content:center;gap:18px">
+          <div class="htitle">Enter a nickname</div>
+          <div style="width:360px;position:relative"><div class="pin" style="top:-10px;right:-12px">1</div>
+            <div class="field" style="justify-content:flex-start;font-size:16px;padding:15px 14px">your handle<span style="color:#2f6d3a">▮</span></div>
+          </div>
+          <div style="font:11px ui-monospace,monospace;color:#a49f95;position:relative"><div class="pin" style="top:-6px;right:-26px">2</div>unique within room · profanity-filtered</div>
+          <div class="row" style="gap:12px;margin-top:8px;position:relative"><div class="pin" style="top:-14px;left:-14px">3</div>
+            <div class="btn btn-pri">+ CREATE ROOM</div>
+            <div class="btn">⌨ JOIN WITH CODE</div>
+          </div>
+          <div style="margin-top:14px;font:12px ui-monospace,monospace;color:#2a6f9e;position:relative"><div class="pin" style="top:-6px;right:-26px">4</div>or sign up to save progress →</div>
+        </div>
+        <div class="dogwrap"><div class="bubble">what should i call you?</div><div class="dog">DOG SPRITE<br>[idle]</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Single field, no password — guest identity only, in-memory session. (§5.1, §8)</div></div>
+        <div class="note"><span class="n">2</span><div>Nickname <b>unique within a room</b>; profanity filter on display names. (§5.1)</div></div>
+        <div class="note"><span class="n">3</span><div>Two guest paths from one screen: create a room or join by code. No account required.</div></div>
+        <div class="note"><span class="n">4</span><div>Optional account: a guest can <b>convert without losing the session</b>. (§5.1, §5.8)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1c LOBBY / CREATE + JOIN ================= -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Lobby — create + join room</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> LOBBY<span class="g">§5.2</span></div>
+        <div class="scr-body">
+          <div class="htitle">Start playing</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1">
+            <div class="wbox" style="padding:18px;display:flex;flex-direction:column;gap:13px;position:relative"><div class="pin" style="top:-10px;left:-10px">1</div>
+              <div class="lbl">Create a room</div>
+              <div class="row" style="justify-content:space-between"><span class="mut" style="font:12px ui-monospace,monospace">Game</span><div class="seg"><span class="on">BLACKJACK</span><span>RUMMY <span style="opacity:.5">·soon</span></span></div></div>
+              <div class="field">max players ▾ &nbsp; 4</div>
+              <div class="btn btn-pri" style="margin-top:4px">GENERATE ROOM CODE</div>
+              <div class="row" style="margin-top:6px;gap:8px"><div class="field" style="flex:1;letter-spacing:.3em;color:#2a2a2a;font-weight:700">▮ ▮ ▮ ▮ ▮ ▮</div><div class="btn btn-sm">COPY</div><div class="btn btn-sm">SHARE</div></div>
+            </div>
+            <div class="wbox" style="padding:18px;display:flex;flex-direction:column;gap:13px;position:relative"><div class="pin" style="top:-10px;right:-10px">2</div>
+              <div class="lbl">Join a room</div>
+              <div style="font:11px ui-monospace,monospace;color:#a49f95">enter 6-character code</div>
+              <div class="row" style="gap:8px">
+                <div class="field" style="width:36px;height:44px;justify-content:center">▮</div><div class="field" style="width:36px;height:44px;justify-content:center">▮</div><div class="field" style="width:36px;height:44px;justify-content:center">▮</div><div class="field" style="width:36px;height:44px;justify-content:center">▮</div><div class="field" style="width:36px;height:44px;justify-content:center">▮</div><div class="field" style="width:36px;height:44px;justify-content:center">▮</div>
+              </div>
+              <div class="btn" style="margin-top:4px">JOIN ROOM →</div>
+              <div style="margin-top:auto;font:11px/1.5 ui-monospace,monospace;color:#a49f95">disconnected earlier?<br>rejoin your seat within the grace window.</div>
+            </div>
+          </div>
+        </div>
+        <div class="dogwrap left"><div class="dog">DOG SPRITE<br>[idle]</div><div class="bubble">share the code — the more the merrier.</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Create → <b>shareable room code</b>; pick game type & max players up front. Rummy shown but disabled (Phase 2). (§5.2, §4)</div></div>
+        <div class="note"><span class="n">2</span><div>Join by code. <b>Reconnect:</b> a dropped player rejoins the same seat within a grace window. (§5.2, §6)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1d ROOM SETTINGS (HOST) ================= -->
+    <div class="dv-opt" id="1d">
+      <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Room settings — host / waiting room</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> ROOM · WAITING<span class="g">§5.2</span></div>
+        <div class="scr-body">
+          <div class="row" style="justify-content:space-between">
+            <div class="htitle">Room lobby</div>
+            <div class="row" style="gap:8px"><span class="lbl">code</span><div class="field" style="letter-spacing:.25em;font-weight:700;color:#2a2a2a;padding:7px 12px">7QK2XR</div><div class="btn btn-sm">COPY</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:20px;flex:1">
+            <div style="display:flex;flex-direction:column;gap:9px;position:relative"><div class="pin" style="top:-10px;left:-10px">1</div>
+              <div class="lbl">Players (2 / 4)</div>
+              <div class="wbox row" style="padding:10px 12px;justify-content:space-between"><div class="row"><div class="dog" style="width:30px;height:30px;font-size:0"></div><span style="font:13px ui-monospace,monospace">shivansh <span style="color:#2f6d3a;font-size:10px">★HOST</span></span></div></div>
+              <div class="wbox row" style="padding:10px 12px;justify-content:space-between"><div class="row"><div class="dog" style="width:30px;height:30px;font-size:0"></div><span style="font:13px ui-monospace,monospace">player_two</span></div><div class="btn btn-sm btn-warn" style="position:relative">✕ KICK<div class="pin" style="top:-12px;right:-12px">2</div></div></div>
+              <div class="wbox row" style="padding:10px 12px;border-style:dashed;color:#a49f95;font:12px ui-monospace,monospace">＋ waiting for player…</div>
+              <div class="wbox row" style="padding:10px 12px;border-style:dashed;color:#a49f95;font:12px ui-monospace,monospace">＋ waiting for player…</div>
+            </div>
+            <div class="wbox" style="padding:16px;display:flex;flex-direction:column;gap:12px;position:relative"><div class="pin" style="top:-10px;right:-10px">3</div>
+              <div class="lbl">Room settings <span style="color:#2f6d3a">· host only</span></div>
+              <div class="row" style="justify-content:space-between;font:12px ui-monospace,monospace"><span class="mut">Max players</span><div class="seg"><span>2</span><span class="on">4</span><span>6</span></div></div>
+              <div class="row" style="justify-content:space-between;font:12px ui-monospace,monospace"><span class="mut">Starting chips</span><div class="field btn-sm" style="padding:5px 10px">1000 ▾</div></div>
+              <div class="row" style="justify-content:space-between;font:12px ui-monospace,monospace"><span class="mut">Table speed</span><div class="seg"><span>SLOW</span><span class="on">NORMAL</span><span>FAST</span></div></div>
+            </div>
+          </div>
+          <div class="row" style="gap:12px;position:relative"><div class="pin" style="top:-14px;left:-14px">4</div>
+            <div class="btn btn-pri" style="flex:1;padding:13px">▶ START GAME</div>
+            <div class="btn" style="padding:13px">LEAVE</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Seat roster with live join/leave; host badge marked. Empty seats show waiting state. (§5.2)</div></div>
+        <div class="note"><span class="n">2</span><div><b>Host controls:</b> kick action appears only for the host. (§5.2)</div></div>
+        <div class="note"><span class="n">3</span><div>Pre-game settings editable by host only: game type, max players, starting chips, table speed. (§5.2)</div></div>
+        <div class="note"><span class="n">4</span><div>Host starts the game; non-hosts see a disabled "waiting for host" state instead.</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1e BLACKJACK TABLE — VAR A ================= -->
+    <div class="dv-opt" id="1e">
+      <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Blackjack table — <b>Var A: fanned arc</b></div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> BLACKJACK · TABLE<span class="g">§5.3</span></div>
+        <div class="scr-body" style="gap:12px">
+          <!-- dealer -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;position:relative"><div class="pin" style="top:-6px;left:calc(50% + 70px)">1</div>
+            <div class="row" style="gap:6px"><div class="lbl">Dealer</div><div class="wbox" style="padding:2px 8px;font:700 12px ui-monospace,monospace">shows 10</div></div>
+            <div class="row" style="gap:7px"><div class="card">10<span class="s">♣</span></div><div class="card back"></div></div>
+          </div>
+          <!-- other players -->
+          <div class="row" style="justify-content:center;gap:26px">
+            <div style="text-align:center;font:10px ui-monospace,monospace;color:#a49f95">player_two<br><div class="row" style="gap:3px;margin-top:3px"><div class="card" style="width:32px;height:46px;font-size:10px">7<span class="s" style="font-size:11px">♠</span></div><div class="card" style="width:32px;height:46px;font-size:10px">Q<span class="s" style="font-size:11px">♡</span></div></div></div>
+            <div style="text-align:center;font:10px ui-monospace,monospace;color:#a49f95">player_3<br><div class="row" style="gap:3px;margin-top:3px"><div class="card" style="width:32px;height:46px;font-size:10px">A<span class="s" style="font-size:11px">♢</span></div><div class="card" style="width:32px;height:46px;font-size:10px">5<span class="s" style="font-size:11px">♠</span></div></div></div>
+          </div>
+          <!-- your hand -->
+          <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:9px;position:relative"><div class="pin" style="top:-2px;left:calc(50% + 92px)">2</div>
+            <div class="row" style="gap:9px;align-items:flex-end">
+              <div class="card" style="transform:rotate(-8deg)">8<span class="s">♠</span></div>
+              <div class="card" style="transform:rotate(0deg);margin-bottom:6px">K<span class="s">♢</span></div>
+            </div>
+            <div class="row" style="gap:8px"><div class="lbl">You</div><div class="wbox" style="padding:2px 10px;font:700 13px ui-monospace,monospace;color:#2f6d3a">HAND · 18</div><div class="wbox" style="padding:2px 8px;font:11px ui-monospace,monospace">bet 100</div></div>
+          </div>
+          <!-- action bar -->
+          <div class="row" style="justify-content:center;gap:10px;position:relative"><div class="pin" style="top:-14px;left:calc(50% - 175px)">3</div>
+            <div class="btn btn-pri">HIT</div><div class="btn">STAND</div><div class="btn">DOUBLE</div><div class="btn" style="opacity:.5">SPLIT</div>
+            <div class="chip" style="border-style:solid;border-color:#a9781a;color:#7c560c;margin-left:8px;position:relative">0:12<div class="pin" style="top:-14px;right:-14px">4</div></div>
+          </div>
+        </div>
+        <div class="dogwrap left"><div class="dog">DOG SPRITE<br>[prompting]</div><div class="bubble">your move — hit or stand?</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div><b>Authoritative dealer:</b> hole card stays face-down (server-only); deck never sent to clients. (§5.3, §6)</div></div>
+        <div class="note"><span class="n">2</span><div>Fanned hand + always-visible hand value. Suit rule shown: <code>♠♣</code> filled, <code>♡♢</code> outlined, paired with rank. (§5.6)</div></div>
+        <div class="note"><span class="n">3</span><div>Action bar: hit / stand / double / split (split optional for v1, dimmed). (§5.3)</div></div>
+        <div class="note"><span class="n">4</span><div><b>Turn timer</b> in amber; default timeout action = auto-stand to prevent stalls. (§5.3)</div></div>
+        <div class="note"><span class="n">5</span><div>Dog docked bottom-left in <code>prompting</code> state; a mute/skip control is always available. (§5.5, §5.7)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1f BLACKJACK TABLE — VAR B ================= -->
+    <div class="dv-opt" id="1f">
+      <div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Blackjack table — <b>Var B: console HUD</b></div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> BLACKJACK · HUD<span class="g">§5.3 · alt</span></div>
+        <div class="scr-body" style="flex-direction:row;gap:0;padding:0">
+          <!-- left rail dog + roster -->
+          <div style="width:184px;flex:none;border-right:1.5px solid #ddd9d1;padding:16px 14px;display:flex;flex-direction:column;gap:12px;position:relative"><div class="pin" style="top:-2px;right:-11px">5</div>
+            <div class="lbl">Table · 3 seats</div>
+            <div class="wbox" style="padding:8px;font:11px ui-monospace,monospace;display:flex;flex-direction:column;gap:2px">player_two<span style="color:#a49f95">17 · standing</span></div>
+            <div class="wbox" style="padding:8px;font:11px ui-monospace,monospace;display:flex;flex-direction:column;gap:2px">player_3<span style="color:#a49f95">thinking…</span></div>
+            <div class="wbox" style="padding:8px;font:11px ui-monospace,monospace;border-color:#2f6d3a;display:flex;flex-direction:column;gap:2px;color:#2f6d3a">you ★<span>18 · your turn</span></div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div class="dog" style="width:72px;height:72px">DOG SPRITE<br>[prompting]</div>
+              <div class="bubble" style="max-width:150px">stand on 18? smart.</div>
+              <div class="btn btn-sm" style="margin-top:2px">🔇 mute dog</div>
+            </div>
+          </div>
+          <!-- main -->
+          <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div class="wbox row" style="justify-content:space-between;padding:10px 14px;position:relative"><div class="pin" style="top:-10px;right:-10px">1</div>
+              <div class="row" style="gap:8px"><span class="lbl">Dealer shows 10</span><div class="card" style="width:34px;height:48px;font-size:11px">10<span class="s" style="font-size:12px">♣</span></div><div class="card back" style="width:34px;height:48px"></div></div>
+              <div class="wbox" style="padding:3px 10px;font:11px ui-monospace,monospace;color:#7c560c;border-color:#a9781a">pot 300</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;position:relative"><div class="pin" style="top:24px;right:20px">2</div>
+              <div class="lbl">Your hand</div>
+              <div class="row" style="gap:12px"><div class="card" style="width:70px;height:100px;font-size:20px">8<span class="s" style="font-size:24px">♠</span></div><div class="card" style="width:70px;height:100px;font-size:20px">K<span class="s" style="font-size:24px">♢</span></div></div>
+              <div style="font:700 30px 'Architects Daughter',sans-serif;color:#2f6d3a">18</div>
+            </div>
+            <div class="row" style="gap:9px;position:relative"><div class="pin" style="top:-14px;left:-11px">3</div>
+              <div class="btn btn-pri" style="flex:1">HIT</div><div class="btn" style="flex:1">STAND</div><div class="btn" style="flex:1">DOUBLE</div><div class="btn" style="flex:1;opacity:.5">SPLIT</div>
+              <div class="chip" style="border-style:solid;border-color:#a9781a;color:#7c560c;position:relative">0:09<div class="pin" style="top:-14px;right:-13px">4</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Dealer as a compact top strip; hole card hidden, pot in amber. (§5.3)</div></div>
+        <div class="note"><span class="n">2</span><div>Single-focus HUD: your hand is enlarged & centered — better for small screens where fanning is tight. (§6, §9)</div></div>
+        <div class="note"><span class="n">3</span><div>Full-width command bar, terminal-style — same actions as Var A.</div></div>
+        <div class="note"><span class="n">4</span><div>Turn timer amber; auto-stand on timeout. (§5.3)</div></div>
+        <div class="note"><span class="n">5</span><div><b>Dog lives in a persistent left rail</b> (roster + narration + mute), not a floating corner — the alt to <a class="dv-oid" href="#1e">1e</a>. (§5.5)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1g BETTING ROUND ================= -->
+    <div class="dv-opt" id="1g">
+      <div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Betting round</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> BLACKJACK · PLACE BETS<span class="g">§5.3</span></div>
+        <div class="scr-body" style="align-items:center;justify-content:center;gap:16px;background:#f4f2ec">
+          <div class="wbox" style="width:440px;background:#fcfbf9;padding:22px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 24px rgba(0,0,0,.12);position:relative">
+            <div class="pin" style="top:-10px;right:-10px">1</div>
+            <div class="htitle">Place your bet</div>
+            <div class="row" style="gap:11px;position:relative"><div class="pin" style="top:-14px;left:-14px">2</div>
+              <div class="chip">5</div><div class="chip">25</div><div class="chip" style="border-style:solid">100</div><div class="chip">500</div>
+            </div>
+            <div class="row" style="justify-content:space-between;width:100%;font:12px ui-monospace,monospace">
+              <div class="wbox" style="padding:8px 14px">bet <b style="color:#2f6d3a">100</b></div>
+              <div class="wbox" style="padding:8px 14px">balance 900</div>
+            </div>
+            <div class="row" style="gap:10px;width:100%"><div class="btn" style="flex:1">CLEAR</div><div class="btn btn-pri" style="flex:2">DEAL ME IN ▶</div></div>
+            <div class="row" style="gap:8px;align-items:center;position:relative"><div class="pin" style="top:-13px;right:-24px">3</div><div class="chip" style="width:28px;height:28px;border-style:solid;border-color:#a9781a;color:#7c560c;font-size:9px">0:15</div><span style="font:11px ui-monospace,monospace;color:#a49f95">auto-deal on timeout</span></div>
+          </div>
+          <div class="row" style="gap:16px;font:11px ui-monospace,monospace;color:#a49f95"><span>player_two ✓ 50</span><span>player_3 · betting…</span></div>
+        </div>
+        <div class="dogwrap"><div class="bubble">chips on the table. good luck!</div><div class="dog">DOG SPRITE<br>[idle]</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Betting round precedes the deal each hand; payouts resolve at hand end. (§5.3)</div></div>
+        <div class="note"><span class="n">2</span><div>Chips are <b>cosmetic / score only</b> — no real-money gambling. Denominations are quick-add. (§2, §5.3)</div></div>
+        <div class="note"><span class="n">3</span><div>Bet timer with default action so one idle player can't stall the table. (§5.3, §6)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1h HAND RESOLUTION ================= -->
+    <div class="dv-opt" id="1h">
+      <div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Hand resolution — win / loss / push</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> BLACKJACK · RESULT<span class="g">§5.3</span></div>
+        <div class="scr-body" style="gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative"><div class="pin" style="top:-4px;left:calc(50% + 74px)">1</div>
+            <div class="row" style="gap:6px"><div class="lbl">Dealer</div><div class="wbox" style="padding:2px 8px;font:700 12px ui-monospace,monospace">22 · BUST</div></div>
+            <div class="row" style="gap:6px"><div class="card">10<span class="s">♣</span></div><div class="card">7<span class="s">♠</span></div><div class="card">5<span class="s">♡</span></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:4px;position:relative"><div class="pin" style="top:-6px;left:calc(50% + 96px)">2</div>
+            <div class="wbox" style="padding:9px 24px;background:#eaf6e8;border-color:#2f6d3a;font:400 30px 'Architects Daughter',sans-serif;color:#2f6d3a">YOU WIN &nbsp;·&nbsp; +100</div>
+            <div class="row" style="gap:8px"><div class="card">8<span class="s">♠</span></div><div class="card">K<span class="s">♢</span></div></div>
+            <div class="wbox" style="padding:2px 10px;font:700 12px ui-monospace,monospace;color:#2f6d3a">HAND · 18</div>
+          </div>
+          <div class="row" style="justify-content:center;gap:8px;margin-top:2px;position:relative"><div class="pin" style="top:-13px;left:calc(50% - 168px)">3</div>
+            <span class="lbl" style="align-self:center;margin-right:4px">states:</span>
+            <div class="wbox btn-sm" style="border-color:#2f6d3a;color:#2f6d3a">WIN</div>
+            <div class="wbox btn-sm">LOSS</div>
+            <div class="wbox btn-sm">PUSH</div>
+            <div class="wbox btn-sm" style="border-color:#a9781a;color:#7c560c">BUST</div>
+            <div class="wbox btn-sm" style="background:#eaf6e8;border-color:#2f6d3a;color:#2f6d3a">BLACKJACK ×1.5</div>
+          </div>
+          <div class="row" style="justify-content:center;gap:12px;margin-top:auto"><div class="btn btn-pri">NEXT HAND ▶</div><div class="btn">LEAVE TABLE</div></div>
+        </div>
+        <div class="dogwrap left"><div class="dog">DOG SPRITE<br>[reacting_win]</div><div class="bubble">tail-wag! dealer busted — you take it.</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Dealer's full hand revealed on resolution (hole card flips). (§5.3)</div></div>
+        <div class="note"><span class="n">2</span><div>Result banner + <b>payout</b> stated plainly. (§5.3)</div></div>
+        <div class="note"><span class="n">3</span><div>All outcomes surfaced clearly: <b>win / loss / push / bust / blackjack</b> (1.5× payout). (§5.3)</div></div>
+        <div class="note"><span class="n">4</span><div>Dog maps to <code>reacting_win</code> / <code>reacting_loss</code> / <code>reacting_neutral</code> per outcome — event→state→line table. (§5.5, §8)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1i SETTINGS / A11Y ================= -->
+    <div class="dv-opt" id="1i">
+      <div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Settings & accessibility</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> SETTINGS<span class="g">§5.7</span></div>
+        <div class="scr-body" style="gap:14px">
+          <div class="htitle">Settings</div>
+          <div class="wbox" style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;position:relative"><div class="pin" style="top:-10px;left:-10px">1</div>
+            <div class="row" style="justify-content:space-between"><div><div style="font:13px ui-monospace,monospace;color:#2a2a2a">CRT intensity</div><div style="font:10px ui-monospace,monospace;color:#a49f95">scanlines · glow · curvature · aberration</div></div><div class="seg"><span>OFF</span><span class="on">SUBTLE</span><span>FULL</span></div></div>
+            <div class="row" style="justify-content:space-between;position:relative"><div class="pin" style="top:-4px;right:-26px">2</div><span style="font:13px ui-monospace,monospace;color:#2a2a2a">Reduce motion <span style="color:#a49f95;font-size:10px">· follows system</span></span><div class="tog on"></div></div>
+            <div class="row" style="justify-content:space-between;position:relative"><div class="pin" style="top:-4px;right:-26px">3</div><span style="font:13px ui-monospace,monospace;color:#2a2a2a">Reduce flicker <span style="color:#a49f95;font-size:10px">· independent</span></span><div class="tog"></div></div>
+          </div>
+          <div class="wbox" style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;position:relative"><div class="pin" style="top:-10px;left:-10px">4</div>
+            <div class="row" style="justify-content:space-between"><span style="font:13px ui-monospace,monospace;color:#2a2a2a">Mute dog</span><div class="tog"></div></div>
+            <div class="row" style="justify-content:space-between"><span style="font:13px ui-monospace,monospace;color:#2a2a2a">Skip narration by default</span><div class="tog"></div></div>
+            <div class="row" style="justify-content:space-between"><span style="font:13px ui-monospace,monospace;color:#2a2a2a">Master volume</span><div class="bar" style="width:180px;position:relative"><div style="position:absolute;left:60%;top:-4px;width:16px;height:16px;border-radius:50%;background:#2f6d3a"></div></div></div>
+            <div class="row" style="justify-content:space-between"><span style="font:13px ui-monospace,monospace;color:#2a2a2a">SFX volume</span><div class="bar" style="width:180px;position:relative"><div style="position:absolute;left:40%;top:-4px;width:16px;height:16px;border-radius:50%;background:#2f6d3a"></div></div></div>
+          </div>
+          <div style="font:11px ui-monospace,monospace;color:#a49f95;position:relative"><div class="pin" style="top:-6px;right:-26px">5</div>persists → account: server · guest: local storage</div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>CRT intensity is <b>Off / Subtle / Full</b> — defaults matter (heavy effects hurt readability & perf). (§5.7, §9)</div></div>
+        <div class="note"><span class="n">2</span><div>Reduce-motion toggle respects <code>prefers-reduced-motion</code>. (§5.7)</div></div>
+        <div class="note"><span class="n">3</span><div>Reduce-flicker is a <b>separate</b> toggle, independent of motion. (§5.7)</div></div>
+        <div class="note"><span class="n">4</span><div>Dog mute/skip + master & SFX volume. Narration never blocks play. (§5.5, §5.7)</div></div>
+        <div class="note"><span class="n">5</span><div>Settings persist server-side for accounts, local for guests. (§5.7, §5.8)</div></div>
+      </div>
+    </div>
+
+    <!-- ================= 1j ACCOUNT / STATS ================= -->
+    <div class="dv-opt" id="1j">
+      <div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Account sign-up + stats</div>
+      <div class="scr">
+        <div class="scr-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> ACCOUNT<span class="g">§5.1 · §5.8</span></div>
+        <div class="scr-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1">
+            <div class="wbox" style="padding:18px;display:flex;flex-direction:column;gap:12px;position:relative"><div class="pin" style="top:-10px;left:-10px">1</div>
+              <div class="lbl">Create account</div>
+              <div style="font:11px/1.4 ui-monospace,monospace;color:#2f6d3a;background:#eaf6e8;border-radius:5px;padding:8px 10px;position:relative"><div class="pin" style="top:-11px;right:-11px">2</div>keep your current session & chips — converting won't kick you from the room.</div>
+              <div class="field">email address</div>
+              <div class="btn btn-pri">CONTINUE →</div>
+              <div class="row" style="gap:8px;align-items:center"><div class="bar" style="flex:1;height:1px;background:#cdc9c0"></div><span style="font:10px ui-monospace,monospace;color:#a49f95">OR</span><div class="bar" style="flex:1;height:1px;background:#cdc9c0"></div></div>
+              <div class="btn">◎ Continue with Google</div>
+              <div class="btn">◎ Continue with Apple</div>
+            </div>
+            <div class="wbox" style="padding:18px;display:flex;flex-direction:column;gap:12px;position:relative"><div class="pin" style="top:-10px;right:-10px">3</div>
+              <div class="lbl">Your profile</div>
+              <div class="row" style="gap:10px"><div class="dog" style="width:46px;height:46px;font-size:0"></div><div style="font:14px ui-monospace,monospace">shivansh<br><span style="font-size:10px;color:#a49f95">member · chips 900</span></div></div>
+              <div class="row" style="gap:10px"><div class="wbox" style="flex:1;padding:10px;text-align:center"><div style="font:700 20px ui-monospace,monospace;color:#2f6d3a">24</div><div style="font:9px ui-monospace,monospace;color:#a49f95">WINS</div></div><div class="wbox" style="flex:1;padding:10px;text-align:center"><div style="font:700 20px ui-monospace,monospace">17</div><div style="font:9px ui-monospace,monospace;color:#a49f95">LOSSES</div></div><div class="wbox" style="flex:1;padding:10px;text-align:center"><div style="font:700 20px ui-monospace,monospace">3</div><div style="font:9px ui-monospace,monospace;color:#a49f95">PUSHES</div></div></div>
+              <div class="lbl" style="margin-top:2px">Match history</div>
+              <div class="wbox row" style="padding:7px 10px;justify-content:space-between;font:11px ui-monospace,monospace"><span>Blackjack · room 7QK2XR</span><span style="color:#2f6d3a">+100</span></div>
+              <div class="wbox row" style="padding:7px 10px;justify-content:space-between;font:11px ui-monospace,monospace"><span>Blackjack · room 3MZP1A</span><span style="color:#a49f95">−50</span></div>
+              <div class="wbox row" style="padding:7px 10px;justify-content:space-between;font:11px ui-monospace,monospace"><span>Blackjack · room QW88KE</span><span style="color:#2f6d3a">+250</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="dogwrap"><div class="bubble">sign up and i'll remember your streak.</div><div class="dog">DOG SPRITE<br>[idle]</div></div>
+      </div>
+      <div class="notes">
+        <div class="note"><span class="n">1</span><div>Accounts are <b>optional</b> — email or OAuth (Google / Apple). (§5.1, §7)</div></div>
+        <div class="note"><span class="n">2</span><div>Guest → account conversion keeps the live session; no lost progress. (§5.1)</div></div>
+        <div class="note"><span class="n">3</span><div>Persisted for accounts: chips balance, win/loss/push stats, match history. (§5.8, §8)</div></div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "flesh out <a class="dv-oid" href="#1e">1e</a> into full CRT fidelity — phosphor green on black" · "add mobile versions of the table & betting screens" · "give me a Phase 2 game-selection screen" · "storyboard the dog state machine across a whole hand"</p>
+</section>
+</x-dc>
+</body>
+</html>
