@@ -1,8 +1,8 @@
 # Product Requirements Document
 ## "Amygdala" — a retro-terminal online multiplayer card game
 
-**Status:** Draft v1
-**Date:** 2026-07-15
+**Status:** Draft v1.1 — Phase 1 frontend complete; tech stack confirmed
+**Date:** 2026-07-15 (stack confirmed 2026-07-17)
 **Owner:** Shivansh
 
 ---
@@ -188,19 +188,38 @@ than it first appears:
 
 ---
 
-## 7. Proposed technical architecture
+## 7. Technical architecture (confirmed 2026-07-17)
 
-> Directional, not binding — final stack to be confirmed by engineering.
+> Phase 1 (this repo, as built) is intentionally framework-free: a static
+> `index.html` + vanilla JS modules, no build step, no server. That was the
+> right call for proving the UI and the local Blackjack engine. Everything
+> below is the stack for the real multiplayer build (Phase 1 server work
+> onward) and is now **locked in**, not just directional.
 
-- **Front end:** React + Tailwind CSS. Sprite-sheet animation for the dog and
-  card effects. CRT effects via CSS/SVG filters and shader-lite techniques.
-- **Real-time server:** an authoritative multiplayer framework —
-  **Colyseus** (purpose-built for room-based authoritative state) is
-  recommended; Socket.IO is the lower-level alternative.
-- **Game logic:** a per-game rules engine on the server (Blackjack first, Rummy
-  second) with a shared interface so games plug into the same room lifecycle.
-- **Identity/persistence:** guest sessions in-memory; optional accounts backed by
-  a database (chips, stats, history). Auth via email or OAuth.
+- **Front end:** **Next.js** (React) + Tailwind CSS, written in
+  **TypeScript**. Next.js was chosen over plain React because the project
+  already deploys to Vercel, and its built-in routing/API-route conventions
+  fit that pipeline with minimal extra setup. TypeScript is used so the
+  client and server can share type definitions for room/game state — in a
+  real-time game, a client and server that quietly disagree about the shape
+  of a state object is a common source of bugs. Sprite-sheet animation for
+  the dog and card effects carries over unchanged from Phase 1. CRT effects
+  via CSS/SVG filters and shader-lite techniques.
+- **Real-time server:** **Colyseus**, written in TypeScript, run as a
+  standalone Node process (separate from the Next.js app) — purpose-built
+  for room-based authoritative state, which fits the "hidden cards never
+  leave the server" requirement directly.
+- **Game logic:** a per-game rules engine on the server (Blackjack first,
+  Rummy second) with a shared interface so games plug into the same room
+  lifecycle. The Phase 1 engine (`game_rules/blackjack/engine.mjs`) moves
+  server-side largely as-is — the logic doesn't need a rewrite, just a new
+  home and a TypeScript port.
+- **Identity/persistence:** **Supabase** (hosted Postgres + built-in
+  email/OAuth auth). Chosen over a bare Postgres host (e.g. Neon) plus a
+  separate auth library because it removes the need to build auth from
+  scratch — a meaningful shortcut for a personal project. Guest sessions
+  stay in-memory on the Colyseus server; only accounts are persisted to
+  Supabase (chips, stats, match history, saved settings).
 - **Assets:** Amoria web font (license permitting), pixel body/card font, dog
   sprite sheets, SFX.
 
@@ -208,17 +227,23 @@ than it first appears:
 
 ## 8. Data model (high level)
 
-- **Player:** id, nickname, isGuest, (accountId), chips, stats.
-- **Room:** code, hostId, gameType, settings, playerIds, state.
+- **Player:** id, nickname, isGuest, (accountId), chips, stats. Lives in
+  Colyseus room state (in-memory) while a room is active.
+- **Room:** code, hostId, gameType, settings, playerIds, state. Also
+  in-memory, owned by the Colyseus server.
 - **GameState (per game):** deck (server-only), hands, turn, phase, pot/bets,
   results.
 - **DogEvent → DogState/Lines:** mapping table driving narration.
-- **Account:** id, auth, chips, stats, matchHistory, savedSettings.
+- **Account:** id, auth, chips, stats, matchHistory, savedSettings. Persisted
+  in Supabase (Postgres) — the only part of the data model that outlives a
+  room.
 
 ---
 
 ## 9. Key risks & open questions
 
+- **Stack** — resolved (§7): Next.js + TypeScript, Colyseus, Supabase. No
+  longer open.
 - **Amoria** — licensing is not a concern (personal, non-commercial). Only open
   item is confirming a usable web font file (.woff2/.ttf) that loads via
   `@font-face`.
@@ -248,10 +273,15 @@ than it first appears:
 ## 11. Phased milestones
 
 **Phase 1 — Blackjack**
-1. Theme system + settings + CRT toggles.
-2. Dog state machine + line library + Blackjack narration.
-3. Rooms, real-time sync, authoritative Blackjack engine.
-4. Guest flow + optional accounts + basic persistence.
+1. ✅ Theme system + settings + CRT toggles.
+2. ✅ Dog state machine + line library + Blackjack narration.
+
+   *(1–2 shipped as the current frontend-only build — vanilla JS, no
+   server, no framework. See README §Scope.)*
+3. Rooms, real-time sync, authoritative Blackjack engine — **Colyseus**
+   server, Blackjack engine ported server-side (TypeScript).
+4. Guest flow + optional accounts + basic persistence — **Supabase**
+   (Postgres + auth), wired into a **Next.js** front end.
 5. Responsive/mobile pass + accessibility pass.
 
 **Phase 2 — Rummy**
@@ -262,5 +292,6 @@ than it first appears:
 
 ---
 
-*End of PRD v1. This is a living document — sections 5, 7, and 8 will be
-refined as design and engineering decisions firm up.*
+*End of PRD v1.1. This is a living document — section 7's stack is now
+confirmed; sections 5 and 8 may still be refined as engineering decisions
+firm up during the server build.*

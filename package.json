@@ -4,11 +4,19 @@
   "private": true,
   "description": "Amygdala — a retro-terminal card club. Phase 1: Blackjack.",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "start": "node serve.mjs",
-    "shot": "node screenshot.mjs http://localhost:3000"
+    "shot": "node screenshot.mjs http://localhost:3000",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "puppeteer": "^25.3.0"
+    "@types/node": "^22.20.1",
+    "puppeteer": "^25.3.0",
+    "typescript": "^5.7.2"
   }
 }

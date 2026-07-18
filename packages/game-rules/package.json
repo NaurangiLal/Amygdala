@@ -1,0 +1,18 @@
+{
+  "name": "@amygdala/game-rules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Card game rules engines. Shared by the Colyseus server and the web client — the server runs them, the client uses the types and pure helpers.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./blackjack": "./src/blackjack/engine.ts",
+    "./blackjack/lines": "./src/blackjack/lines.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "pretest": "node --input-type=module -e \"import{globSync}from'node:fs';const f=globSync('test/**/*.test.ts');if(!f.length){console.error('No test files matched test/**/*.test.ts — a green run of zero tests is worse than a red one.');process.exit(1)}console.log(`test files: ${f.length}`)\"",
+    "test": "node --test --experimental-strip-types \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  }
+}

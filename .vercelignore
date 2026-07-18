@@ -8,7 +8,15 @@ serve.mjs
 screenshot.mjs
 package.json
 package-lock.json
+tsconfig.base.json
 .claude
+
+# The monorepo the multiplayer build lives in. The static site is still served
+# from the repo root and loads none of it; shipping TypeScript source to a
+# static host would just be dead weight. Removed when Stage C flips the site
+# over to the Next.js app.
+packages
+apps
 
 # Asset-generation scripts and their source sheet.
 brand_assets/_gen_*.py
