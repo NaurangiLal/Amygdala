@@ -7,7 +7,7 @@
 // Left null, the app falls back to ws://localhost:2567 on localhost, so local
 // development needs no edit. Must be wss:// (not ws://) in production so a
 // page served over https can connect.
-window.AMYGDALA_SERVER = null;
+window.AMYGDALA_SERVER = "wss://amygdala-server.onrender.com";
 
 // Optional accounts (PRD §5.8). Guest play needs none of this — the game is
 // fully playable without it. To turn on persistent accounts, create a Supabase
