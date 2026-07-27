@@ -5,6 +5,12 @@
 import config from '@colyseus/tools';
 import { BlackjackRoom } from './rooms/BlackjackRoom.ts';
 
+// Cross-origin note: the web client (Vercel) and this server (Render) are on
+// different origins, so the SDK's matchmaking HTTP request is cross-origin.
+// @colyseus/tools already ships CORS that reflects the request origin and
+// supports credentials — the correct, valid behaviour — so no CORS code is
+// needed here. The WebSocket upgrade itself isn't CORS-gated.
+
 export default config({
   initializeGameServer: (gameServer) => {
     gameServer.define('blackjack', BlackjackRoom);

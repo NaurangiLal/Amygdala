@@ -1092,6 +1092,8 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
   </div>
 </main>
 
+<!-- Runtime config (server address) must load before the app module reads it. -->
+<script src="app/config.js"></script>
 <script type="module" src="app/app.mjs"></script>
 </body>
 </html>

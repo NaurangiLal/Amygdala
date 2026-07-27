@@ -1,0 +1,20 @@
+# Render Blueprint for the Colyseus server (the real-time half of Amygdala).
+# The Next.js/static frontend deploys separately to Vercel; this is only the
+# Node process that holds the game rooms in memory (PRD §7 — it can't live on
+# Vercel's serverless functions).
+#
+# One-time setup: at https://dashboard.render.com → New → Blueprint, point it at
+# this repo. Render reads this file. See docs/DEPLOY.md for the full walkthrough.
+services:
+  - type: web
+    name: amygdala-server
+    runtime: node
+    plan: free # no card required; sleeps after 15 min idle, ~30-50s cold start
+    rootDir: . # install from the repo root so the npm workspace link resolves
+    buildCommand: npm install
+    startCommand: npm run start --workspace @amygdala/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.19.0 # --experimental-strip-types needs Node >= 22.6
+    # CORS is automatic — Colyseus reflects the client's origin. Nothing to set.

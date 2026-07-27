@@ -3,16 +3,41 @@
 A retro-terminal card club. Green phosphor on black, a pixel dog who narrates,
 and Blackjack you can actually play.
 
-This is the **Phase 1 frontend** ([PRD](PRD.md) §4): every screen from the
-wireframe, built to full CRT fidelity, with a working Blackjack engine running
-locally. There is **no server yet** — see [Scope](#scope) below.
+Full-stack now: a CRT-fidelity frontend, an authoritative **Colyseus** server
+that owns the deck and the chips, and a shared TypeScript Blackjack engine. Real
+players join a room by code; a lone visitor gets CPU table-mates. To play it
+online, deploy in three free steps — see **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+## Architecture
+
+```
+index.html + app/         static CRT frontend → Vercel
+  app/net.mjs             Colyseus client: sends intents, renders server state
+  app/vendor/colyseus.mjs bundled client SDK (no build step on the page)
+packages/game-rules/      shared TypeScript engine (rules, types) — client + server
+apps/server/              Colyseus room process → Render (holds sockets in memory)
+docs/DEPLOY.md            three-host deploy guide (Vercel + Render + Supabase)
+```
+
+The server is authoritative (PRD §6): the deck and the dealer's hole card never
+leave it. The client sends `bet`/`hit`/`stand`/`double` and re-renders whatever
+redacted state the server pushes back — it can't see a hidden card even in
+devtools. 40 tests cover the engine and the room; the anti-cheat boundary is
+asserted against the actual wire payload.
 
 ## Run it
 
+Two processes — the server, then the site:
+
 ```bash
-npm install
-npm start           # http://localhost:3000
+npm install                                 # once, from the repo root
+npm run start --workspace @amygdala/server   # terminal 1 — server on :2567
+npm start                                    # terminal 2 — site on :3000
 ```
+
+Open `http://localhost:3000`. With no server URL configured, the client
+auto-connects to `ws://localhost:2567`, so local dev needs no edit. Run all
+40 tests with `npm test`.
 
 Screenshots (used to check the build against the wireframe):
 

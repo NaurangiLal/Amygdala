@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Colyseus real-time server. Holds the authoritative Blackjack game and syncs a redacted view to each client (PRD §7).",
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "scripts": {
     "start": "node --experimental-strip-types src/index.ts",
     "dev": "node --watch --experimental-strip-types src/index.ts",
