@@ -712,6 +712,20 @@ $('#nextHand').addEventListener('click', () => {
   $('#nextHand').disabled = true;
 });
 
+// Leaving the table has to leave the server room, not just change screens — a
+// data-go would keep the seat and the reactor would pull you back on the next
+// patch. Stop reacting, disconnect, then return to the lobby.
+$('#leaveTable').addEventListener('click', async () => {
+  entered = false;
+  net.onState = () => {};
+  net.onLeave = () => {};
+  betSent = false;
+  narratedTurn = null;
+  lastPhase = null;
+  await net.leave();
+  go('lobby');
+});
+
 // ---------------------------------------------------------------------------
 // 1i — Settings
 // ---------------------------------------------------------------------------
