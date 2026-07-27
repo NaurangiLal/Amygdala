@@ -1,0 +1,24 @@
+{
+  "name": "@amygdala/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Colyseus real-time server. Holds the authoritative Blackjack game and syncs a redacted view to each client (PRD §7).",
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "pretest": "node --input-type=module -e \"import{globSync}from'node:fs';const f=globSync('test/**/*.test.ts');if(!f.length){console.error('No test files matched — a green run of zero tests is worse than a red one.');process.exit(1)}console.log(`test files: ${f.length}`)\"",
+    "test": "node --test --experimental-strip-types \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@amygdala/game-rules": "*",
+    "@colyseus/core": "^0.17",
+    "@colyseus/schema": "^4.0.7",
+    "@colyseus/ws-transport": "^0.17",
+    "colyseus": "^0.17"
+  },
+  "devDependencies": {
+    "@colyseus/testing": "^0.17"
+  }
+}
