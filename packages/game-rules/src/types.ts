@@ -102,15 +102,19 @@ export interface ClientView extends Omit<BlackjackState, 'deck' | 'dealer' | 'pl
 }
 
 /** The interface every game plugs into, so the room lifecycle never imports a
- *  game folder directly (PRD §4). Blackjack today, Rummy in Phase 2. */
-export interface GameEngine<TState, TMove extends string = string> {
+ *  game folder directly (PRD §4). Blackjack today, Rummy in Phase 2.
+ *
+ *  TArg is what a move carries over the wire: a number for Blackjack (the bet),
+ *  richer objects for Rummy (which cards to meld, where to lay off). Engines
+ *  must treat it as untrusted — it comes straight off a socket. */
+export interface GameEngine<TState, TMove extends string = string, TArg = unknown> {
   id: string;
   name: string;
   minPlayers: number;
   maxPlayers: number;
   createState(players: SeatInput[], settings?: Partial<RoomSettings>): TState;
   legalMoves(state: TState, playerId: string): TMove[];
-  apply(state: TState, playerId: string, move: TMove, arg?: number): TState;
+  apply(state: TState, playerId: string, move: TMove, arg?: TArg): TState;
   isHandOver(state: TState): boolean;
   view(state: TState, playerId: string): unknown;
 }
@@ -133,6 +137,92 @@ export interface SeatInput {
   nickname: string;
   isYou?: boolean;
   chips?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Rummy (Phase 2, PRD §5.4) — straight rummy: draw, meld sets/runs, lay off,
+// discard; first hand to empty wins the round, scored on opponents' deadwood.
+// ---------------------------------------------------------------------------
+
+/** Which half of a turn the player on turn is in: they must draw first, then
+ *  may meld / lay off any number of times before ending with a discard. */
+export type RummyTurnPhase = 'draw' | 'act';
+export type RummyPhase = 'playing' | 'resolved';
+export type RummyMove = 'draw' | 'meld' | 'layoff' | 'discard' | 'nextHand';
+
+/** What a rummy move carries. Cards are referenced by key (`rank + suit`,
+ *  e.g. "10H") — unique in a single deck, so nothing else is needed. */
+export interface RummyArg {
+  /** draw: where from. */
+  source?: 'stock' | 'discard';
+  /** meld: the 3+ hand cards being laid down. */
+  cards?: string[];
+  /** layoff + discard: the single hand card in question. */
+  card?: string;
+  /** layoff: which table meld it extends. */
+  meldId?: number;
+}
+
+export interface RummyMeld {
+  id: number;
+  /** Who laid it down (display only — anyone may lay off onto any meld). */
+  ownerId: string;
+  kind: 'set' | 'run';
+  cards: Card[];
+}
+
+export interface RummyPlayer {
+  id: string;
+  nickname: string;
+  isYou: boolean;
+  chips: number;
+  hand: Card[];
+  result: 'win' | 'loss' | 'push' | null;
+  /** Deadwood points left when the hand ended; the winner's is 0. */
+  deadwood: number;
+  payout: number;
+}
+
+/** Authoritative rummy state. `stock` and every `hand` but your own are the
+ *  secrets — view() strips them (PRD §6). */
+export interface RummyState {
+  game: 'rummy';
+  phase: RummyPhase;
+  turn: string | null;
+  turnPhase: RummyTurnPhase;
+  /** Card taken from the discard this turn — it may not be discarded straight
+   *  back (the classic anti-stall rule), unless it is the last card in hand. */
+  tookFromDiscard: string | null;
+  /** Did the player on turn meld or lay off this turn? Feeds the dead-pile
+   *  counter below. */
+  turnProgress: boolean;
+  /** Consecutive turns that ended with an exhausted stock and no meld/lay-off.
+   *  A full round of them (one per seat) means nobody can or will advance the
+   *  hand — it resolves as a stalemate rather than looping forever. */
+  dryTurns: number;
+  stock: Card[];
+  discard: Card[];
+  melds: RummyMeld[];
+  nextMeldId: number;
+  /** Rotates by one seat each hand so first-draw advantage moves around. */
+  handNumber: number;
+  settings: RoomSettings;
+  players: RummyPlayer[];
+  results: HandOutcome[] | null;
+}
+
+/** A rummy player as an OPPONENT sees them: hand reduced to a count. */
+export interface ClientRummyPlayer extends Omit<RummyPlayer, 'hand'> {
+  handCount: number;
+  /** Full cards only for the viewer's own seat; empty for everyone else. */
+  hand: Card[];
+}
+
+export interface ClientRummyView extends Omit<RummyState, 'stock' | 'players'> {
+  stock?: never;
+  stockCount: number;
+  players: ClientRummyPlayer[];
+  you: string;
 }
 
 /** Dog narration, stored as data so it stays editable and localizable (PRD §5.5). */

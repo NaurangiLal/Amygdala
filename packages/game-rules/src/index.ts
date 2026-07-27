@@ -3,12 +3,24 @@
 
 import blackjack from './blackjack/engine.ts';
 import blackjackLines from './blackjack/lines.ts';
+import rummy from './rummy/engine.ts';
+import rummyLines from './rummy/lines.ts';
 import type { AnyGameEngine, DogLine } from './types.ts';
 
 export * from './types.ts';
 export { handValue } from './blackjack/engine.ts';
 export { BLACKJACK_LINES, SHELL_LINES } from './blackjack/lines.ts';
 export type { DogEvent } from './blackjack/lines.ts';
+export { RUMMY_LINES } from './rummy/lines.ts';
+export {
+  cardValue,
+  cardKey,
+  deadwood,
+  isValidSet,
+  isValidRun,
+  isValidMeld,
+  canLayOff,
+} from './rummy/engine.ts';
 
 export interface CatalogEntry {
   id: string;
@@ -25,8 +37,7 @@ export interface CatalogEntry {
 
 export const CATALOG: CatalogEntry[] = [
   { id: 'blackjack', name: 'Blackjack', phase: 1, available: true, engine: blackjack, lines: blackjackLines },
-  // Phase 2. Surfaces in the UI as disabled until the engine lands.
-  { id: 'rummy', name: 'Rummy', phase: 2, available: false, engine: null, lines: null },
+  { id: 'rummy', name: 'Rummy', phase: 2, available: true, engine: rummy, lines: rummyLines },
   // Future modules — the folder shape already accepts them (PRD §4).
   { id: 'bluff', name: 'Bluff', phase: null, available: false, engine: null, lines: null },
   { id: 'poker', name: 'Poker', phase: null, available: false, engine: null, lines: null },

@@ -418,7 +418,7 @@ const blackjack = {
 // at the call site. Assigned via a variable rather than `satisfies` on the
 // literal: excess-property checking would reject `resolve` and `handValue`,
 // which callers legitimately use — the registry only needs the common surface.
-const _registryShape: GameEngine<BlackjackState, Move> = blackjack;
+const _registryShape: GameEngine<BlackjackState, Move, number> = blackjack;
 void _registryShape;
 
 export default blackjack;
