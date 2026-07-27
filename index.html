@@ -1044,9 +1044,10 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
             <label class="sr-only" for="email">Email address</label>
             <input class="field" id="email" type="email" placeholder="email address" autocomplete="email">
             <button class="btn btn--primary" id="signup" type="button">CONTINUE →</button>
+            <p class="hint" id="signupHint" style="margin: 0; min-height: 1.2em;"></p>
             <div class="divider"><span>OR</span></div>
-            <button class="btn" type="button">◎ Continue with Google</button>
-            <button class="btn" type="button">◎ Continue with Apple</button>
+            <button class="btn" id="googleSignin" type="button">◎ Continue with Google</button>
+            <button class="btn" id="appleSignin" type="button" disabled title="not connected on this project">◎ Continue with Apple</button>
           </div>
 
           <div class="panel">
@@ -1057,6 +1058,7 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
                 <div class="hud" style="font-size: 1.1rem; color: var(--text-strong);" id="profileName">shivansh</div>
                 <div class="hint" id="profileMeta">member · chips 900</div>
               </div>
+              <button class="btn btn--sm btn--ghost" id="signOut" type="button" hidden style="margin-left: auto;">SIGN OUT</button>
             </div>
             <div class="row" style="gap: var(--space-3);">
               <div class="stat"><b id="statWins">24</b><span>WINS</span></div>

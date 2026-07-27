@@ -11,6 +11,7 @@ import { getGame } from '../game_rules/index.mjs';
 import { Dog } from './dog.mjs';
 import { Settings } from './settings.mjs';
 import { Net } from './net.mjs';
+import * as auth from './auth.mjs';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -35,6 +36,13 @@ const session = {
   stats: { wins: 0, losses: 0, pushes: 0 },
   history: [],
 };
+
+// A signed-in account, layered on top of the session above (PRD §5.1, §8).
+// `user` is null for guests — everything account-shaped is optional and the
+// game plays fully without it. `profile` mirrors the `profiles` row: chips
+// here is lifetime NET WINNINGS (a stat), not the room's chip stack — the room
+// stays play-money per table, matching the auto-refill behaviour above.
+const account = { user: null, profile: null };
 
 let state = null; // latest redacted state from the server (adapted for render)
 let selectedBet = 0; // chips staged locally before the bet is sent
@@ -678,6 +686,22 @@ function showResult() {
   else if (you.result === 'push') session.stats.pushes++;
   else if (you.result) session.stats.losses++;
   session.history.unshift({ room: session.roomCode, payout: you.payout });
+
+  // Signed-in play also persists: lifetime net winnings + win/loss/push totals
+  // on the account, and one row per hand in match_history. Fire-and-forget —
+  // a network hiccup here must never block the result screen.
+  if (account.user && you.result) {
+    const p = account.profile ?? { nickname: session.nickname, chips: 0, wins: 0, losses: 0, pushes: 0 };
+    account.profile = {
+      nickname: session.nickname,
+      chips: p.chips + you.payout,
+      wins: p.wins + (you.result === 'win' || you.result === 'blackjack' ? 1 : 0),
+      losses: p.losses + (you.result === 'bust' || you.result === 'loss' ? 1 : 0),
+      pushes: p.pushes + (you.result === 'push' ? 1 : 0),
+    };
+    auth.syncProfile(account.user.id, account.profile).catch(() => {});
+    auth.recordHand(account.user.id, { roomCode: session.roomCode, result: you.result, payout: you.payout }).catch(() => {});
+  }
   renderAccount();
 
   const dealerBust = state.dealer.total > 21;
@@ -783,13 +807,29 @@ window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',
 // ---------------------------------------------------------------------------
 // 1j — Account
 // ---------------------------------------------------------------------------
+// Account chips are lifetime NET WINNINGS, distinct from the room's chip
+// stack (PRD §2, §8) — a member with a fresh 1000-chip table can still show a
+// negative or positive lifetime number here.
 function renderAccount() {
   $('#profileName').textContent = session.nickname;
-  $('#profileMeta').textContent = `${session.isGuest ? 'guest' : 'member'} · chips ${session.chips}`;
-  $('#statWins').textContent = session.stats.wins;
-  $('#statLosses').textContent = session.stats.losses;
-  $('#statPushes').textContent = session.stats.pushes;
+  $('#signOut').hidden = !account.user;
 
+  if (account.user) {
+    const p = account.profile ?? { chips: 0, wins: 0, losses: 0, pushes: 0 };
+    $('#profileMeta').textContent = `member · lifetime ${p.chips >= 0 ? '+' : ''}${p.chips}`;
+    $('#statWins').textContent = p.wins;
+    $('#statLosses').textContent = p.losses;
+    $('#statPushes').textContent = p.pushes;
+  } else {
+    $('#profileMeta').textContent = `guest · chips ${session.chips}`;
+    $('#statWins').textContent = session.stats.wins;
+    $('#statLosses').textContent = session.stats.losses;
+    $('#statPushes').textContent = session.stats.pushes;
+  }
+
+  // This session's recent hands. Signed-in play is also durably written to
+  // Supabase (recordHand), but the account screen shows the immediate list
+  // rather than round-tripping the server for it.
   const history = $('#history');
   if (session.history.length === 0) {
     history.innerHTML = `<p class="hint" style="margin:0">no hands yet — play one and it shows up here.</p>`;
@@ -805,19 +845,79 @@ function renderAccount() {
     .join('');
 }
 
-$('#signup').addEventListener('click', () => {
+// The status bar's GUEST/MEMBER tag is set once per screen change inside go();
+// signing in/out happens asynchronously (an auth redirect, an email link), so
+// it has to be able to refresh that tag on its own, matching go()'s own logic.
+function refreshStatusMeta() {
+  const [, meta] = STATUS[current] ?? ['', ''];
+  $('#statusMeta').textContent = session.isGuest ? meta : meta.replace('GUEST', 'MEMBER');
+}
+
+function signupHint(text, isError = false) {
+  const el = $('#signupHint');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--amber-alert)' : '';
+}
+
+if (!auth.enabled) {
+  // No Supabase project configured: Google has nothing to connect to, and the
+  // email field can't send anything. Guest play is completely unaffected.
+  $('#googleSignin').disabled = true;
+  $('#googleSignin').title = 'not configured — see docs/DEPLOY.md § Accounts';
+}
+
+$('#signup').addEventListener('click', async () => {
   const email = $('#email').value.trim();
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     $('#email').focus();
     $('#email').style.borderColor = 'var(--amber-alert)';
+    signupHint('enter a real email address', true);
     return;
   }
-  // Converting keeps the live session — chips, seat, and stats all survive (PRD §5.1).
   $('#email').style.borderColor = '';
-  session.isGuest = false;
-  renderAccount();
-  $('#statusMeta').textContent = 'MEMBER';
+  if (!auth.enabled) {
+    signupHint('accounts are not configured on this deployment', true);
+    return;
+  }
+  $('#signup').disabled = true;
+  try {
+    await auth.sendSignInEmail(email);
+    signupHint('check your inbox — click the link to finish signing in.');
+  } catch (e) {
+    signupHint(e?.message || 'could not send the sign-in email — try again', true);
+  } finally {
+    $('#signup').disabled = false;
+  }
+});
+
+$('#googleSignin').addEventListener('click', async () => {
+  if (!auth.enabled) return;
+  try {
+    await auth.signInWithGoogle(); // navigates away to Google, then back here
+  } catch (e) {
+    signupHint(e?.message || 'could not reach Google — try again', true);
+  }
+});
+
+$('#signOut').addEventListener('click', async () => {
+  await auth.signOut();
   dog.say('account');
+});
+
+// React to sign-in/out — including the moment we land back here after a
+// Google or email redirect. Fires once immediately with whatever the current
+// state already is (signed in from a prior visit, or signed out).
+auth.onAuthChange(async (user) => {
+  account.user = user;
+  session.isGuest = !user;
+  if (user) {
+    account.profile = await auth.fetchProfile(user.id);
+    dog.say('account');
+  } else {
+    account.profile = null;
+  }
+  renderAccount();
+  refreshStatusMeta();
 });
 
 // ---------------------------------------------------------------------------

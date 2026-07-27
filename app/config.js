@@ -10,13 +10,12 @@
 window.AMYGDALA_SERVER = "wss://amygdala-server.onrender.com";
 
 // Optional accounts (PRD §5.8). Guest play needs none of this — the game is
-// fully playable without it. To turn on persistent accounts, create a Supabase
-// project, run docs/supabase-schema.sql in it, and paste its URL + anon key
-// here (both are safe to expose in the browser; row-level security protects the
-// data). See docs/DEPLOY.md § Accounts.
-//
-//   window.AMYGDALA_SUPABASE = {
-//     url: "https://YOUR-PROJECT.supabase.co",
-//     anonKey: "YOUR-ANON-KEY",
-//   };
-window.AMYGDALA_SUPABASE = null;
+// fully playable without it. Both values below are the Supabase *anon* public
+// key and project URL — safe to ship in browser code; row-level security
+// (docs/supabase-schema.sql) is what actually protects the data, not secrecy
+// of this key. Never put the service_role key here or anywhere client-side.
+window.AMYGDALA_SUPABASE = {
+  url: "https://scvwnlfkecigchbkmjbr.supabase.co",
+  anonKey:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjdndubGZrZWNpZ2NoYmttamJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjAyMTQsImV4cCI6MjEwMDczNjIxNH0.9EEBFs_LxRShNK7PigvC_QMJXkJDgIu4_7nQtgVuOFY",
+};
