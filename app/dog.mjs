@@ -98,6 +98,21 @@ export class Dog {
     this.#emit();
   }
 
+  // Called when the mute setting flips, from either control (footer button or
+  // settings screen), so both behave identically. Muting clears the words but
+  // keeps the state — the pose is load-bearing UI (whose turn, what happened).
+  // Unmuting re-voices whatever the dog was last saying, so the player gets
+  // immediate proof the unmute worked instead of silence until the next event.
+  refreshMute() {
+    if (this.#settings.get('muteDog')) {
+      this.line = '';
+    } else if (this.event) {
+      const entry = this.#lines[this.event];
+      if (entry) this.line = this.#pick(this.event, entry);
+    }
+    this.#emit();
+  }
+
   // "Skip" on a multi-step explanation — always available, never destructive.
   skip() {
     this.settle();

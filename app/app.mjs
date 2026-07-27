@@ -786,17 +786,27 @@ $('#setMotion').addEventListener('click', () => {
   syncSettingsUI();
 });
 bindToggle('#setFlicker', 'reduceFlicker');
-bindToggle('#setMute', 'muteDog');
 bindToggle('#setSkip', 'skipNarration');
+
+// Mute is not a plain toggle: the dog has to react to the flip — clear its
+// bubble on mute, speak again on unmute — and identically from both controls.
+function toggleMute() {
+  settings.set('muteDog', !settings.get('muteDog'));
+  syncSettingsUI();
+  dog.refreshMute();
+  // Unmuted with nothing mid-say: voice the current screen's entry line so the
+  // player hears the unmute work, rather than silence until the next event.
+  if (!settings.get('muteDog') && !dog.event) {
+    const entry = { identity: 'identity', lobby: 'lobby', account: 'account', settings: 'settings' }[current];
+    dog.say(entry ?? 'table_joined');
+  }
+}
+$('#setMute').addEventListener('click', toggleMute);
 
 $('#setMaster').addEventListener('input', (e) => settings.set('masterVolume', e.target.value / 100));
 $('#setSfx').addEventListener('input', (e) => settings.set('sfxVolume', e.target.value / 100));
 
-$('#muteDogQuick').addEventListener('click', () => {
-  settings.set('muteDog', !settings.get('muteDog'));
-  syncSettingsUI();
-  if (settings.get('muteDog')) dog.settle();
-});
+$('#muteDogQuick').addEventListener('click', toggleMute);
 
 // System preference changes land live if you haven't overridden them.
 window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => {
