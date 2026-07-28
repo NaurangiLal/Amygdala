@@ -17,6 +17,38 @@ const cfg = typeof window !== 'undefined' ? window.AMYGDALA_SUPABASE : null;
 
 export const enabled = Boolean(cfg?.url && cfg?.anonKey);
 
+// Snapshot the auth params BEFORE createClient runs: detectSessionInUrl strips
+// them from the URL as it processes them, so anything read later is already
+// gone. Both shapes are captured — a PKCE return puts them in the query
+// string, an implicit one in the hash.
+const authParams = (() => {
+  if (typeof window === 'undefined') return { error: null, description: null, returned: false };
+  const q = new URLSearchParams(window.location.search);
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const pick = (k) => q.get(k) ?? h.get(k);
+  return {
+    error: pick('error') ?? pick('error_code'),
+    description: (pick('error_description') ?? '').replace(/\+/g, ' '),
+    returned: Boolean(pick('code') || pick('access_token') || pick('error')),
+  };
+})();
+
+/**
+ * Why a sign-in redirect failed, or null if it didn't.
+ *
+ * This is the difference between "it didn't work" and a fixable message: when
+ * Supabase rejects a redirect (most often because the site's URL isn't in the
+ * project's Redirect URLs allow-list) it sends the reason back on the URL and
+ * nothing was reading it.
+ */
+export function redirectError() {
+  if (!authParams.error) return null;
+  return { code: authParams.error, description: authParams.description };
+}
+
+/** Did this page load come back from an auth redirect (success or failure)? */
+export const cameBackFromAuth = authParams.returned;
+
 const client = enabled
   ? createClient(cfg.url, cfg.anonKey, {
       auth: {

@@ -4,6 +4,7 @@
 
 import config from '@colyseus/tools';
 import { BlackjackRoom } from './rooms/BlackjackRoom.ts';
+import { RummyRoom } from './rooms/RummyRoom.ts';
 
 // Cross-origin note: the web client (Vercel) and this server (Render) are on
 // different origins, so the SDK's matchmaking HTTP request is cross-origin.
@@ -14,6 +15,7 @@ import { BlackjackRoom } from './rooms/BlackjackRoom.ts';
 export default config({
   initializeGameServer: (gameServer) => {
     gameServer.define('blackjack', BlackjackRoom);
+    gameServer.define('rummy', RummyRoom);
   },
   initializeExpress: (app) => {
     // Render pings this to know the service is awake (it sleeps on the free

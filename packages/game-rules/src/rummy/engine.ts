@@ -371,6 +371,20 @@ function finish(state: RummyState): void {
   }));
 }
 
+/**
+ * End a hand that cannot continue — every seat pushes, nobody pays.
+ *
+ * The rules are meant to guarantee the player on turn always has a legal move,
+ * but a room driving forced turns (timeouts, dropped players) must have a way
+ * out that is not "retry forever". This is that escape hatch: it can only be
+ * called by the room, never reached by a player move, so it can't be used to
+ * dodge a losing hand.
+ */
+function abandonHand(state: RummyState): RummyState {
+  if (state.phase !== 'playing') return state;
+  return stalemate(state);
+}
+
 function nextHand(state: RummyState, playerId: string): RummyState {
   // The room auto-advances hands in practice; if a client asks directly, it
   // must at least be someone seated at this table.
@@ -440,6 +454,7 @@ const rummy = {
   apply,
   isHandOver: (state: RummyState): boolean => state.phase === 'resolved',
   view,
+  abandonHand,
 };
 
 const _registryShape: GameEngine<RummyState, RummyMove, RummyArg> = rummy;

@@ -8,6 +8,8 @@
     ".": "./src/index.ts",
     "./blackjack": "./src/blackjack/engine.ts",
     "./blackjack/lines": "./src/blackjack/lines.ts",
+    "./rummy": "./src/rummy/engine.ts",
+    "./rummy/lines": "./src/rummy/lines.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {

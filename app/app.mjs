@@ -914,10 +914,26 @@ $('#signOut').addEventListener('click', async () => {
   dog.say('account');
 });
 
+// Coming back from a Google/email redirect, show the outcome instead of
+// dropping the player on the title screen with no idea what happened. Called
+// from the startup sequence at the bottom of this file — running it here would
+// be undone by the go('boot') that opens the app.
+function showAuthRedirectOutcome() {
+  if (!auth.cameBackFromAuth) return;
+  const failure = auth.redirectError();
+  if (!failure) return;
+  // Surfaced verbatim: the usual cause is the site's URL missing from the
+  // Supabase project's Redirect URLs allow-list, and the message says so.
+  signupHint(failure.description || failure.code, true);
+  go('account');
+}
+
 // React to sign-in/out — including the moment we land back here after a
 // Google or email redirect. Fires once immediately with whatever the current
 // state already is (signed in from a prior visit, or signed out).
+let sawFirstAuthState = false;
 auth.onAuthChange(async (user) => {
+  const justSignedIn = user && !account.user;
   account.user = user;
   session.isGuest = !user;
   if (user) {
@@ -928,6 +944,14 @@ auth.onAuthChange(async (user) => {
   }
   renderAccount();
   refreshStatusMeta();
+
+  // A successful redirect lands on the title screen, where nothing looks
+  // different — show the account so the sign-in is visibly real.
+  if (justSignedIn && auth.cameBackFromAuth && !sawFirstAuthState) {
+    signupHint(`signed in as ${user.email ?? 'member'}`);
+    go('account');
+  }
+  sawFirstAuthState = true;
 });
 
 // ---------------------------------------------------------------------------
@@ -948,3 +972,5 @@ syncSettingsUI();
 renderAccount();
 go('boot'); // sets the status bar + docks the dog for the screen we open on
 runBoot();
+// After the opening screen is set, so a failed sign-in isn't hidden behind it.
+showAuthRedirectOutcome();

@@ -333,7 +333,10 @@ export class BlackjackRoom extends Room<{ state: BlackjackState }> {
     // *connected* humans, so a disconnected seat under grace doesn't crowd bots
     // out — and connectedHumans + bots can never exceed MAX_SEATS.
     const humans = this.connectedHumans();
-    const wantBots = Math.max(0, Math.min(DESIRED_SEATS - humans, MAX_SEATS - humans));
+    // Never fill past the room's own player cap — a "2 player" table means
+    // two seats total, not two humans plus bots.
+    const cap = Math.min(MAX_SEATS, this.maxClients) - humans;
+    const wantBots = Math.max(0, Math.min(DESIRED_SEATS - humans, cap));
     const currentBots = [...this.roster.values()].filter((s) => s.isBot);
 
     // Trim surplus bots (humans arrived).
