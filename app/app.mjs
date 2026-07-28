@@ -20,7 +20,10 @@ const settings = new Settings();
 settings.apply();
 
 const blackjack = getGame('blackjack');
-const dog = new Dog(blackjack.lines, settings);
+const rummyGame = getGame('rummy');
+const rules = rummyGame.rules; // pure meld helpers; the server still judges
+// The dog knows every game's lines at once — one narrator across the app.
+const dog = new Dog({ ...blackjack.lines, ...rummyGame.lines }, settings);
 
 // ---------------------------------------------------------------------------
 // Session — what a guest is, before any account exists (PRD §5.1, §8)
@@ -33,6 +36,7 @@ const session = {
   maxPlayers: 4,
   startingChips: 1000,
   tableSpeed: 'normal',
+  game: 'blackjack',
   stats: { wins: 0, losses: 0, pushes: 0 },
   history: [],
 };
@@ -48,6 +52,10 @@ let state = null; // latest redacted state from the server (adapted for render)
 let selectedBet = 0; // chips staged locally before the bet is sent
 let timer = null;
 
+// Rummy client state. `hand` arrives by private message (never in the shared
+// state), and the picks are what the player has selected on screen.
+const rummy = { hand: [], picks: [], layoffMode: false, narrated: null };
+
 const net = new Net();
 const myId = () => net.myId; // this client's seat id, or null before connecting
 let lastPhase = null; // so the reactor only re-narrates on a real phase change
@@ -62,6 +70,7 @@ const STATUS = {
   room: ['ROOM · WAITING', 'HOST'],
   betting: ['BLACKJACK · PLACE BETS', 'LIVE'],
   table: ['BLACKJACK · TABLE', 'LIVE'],
+  rummy: ['RUMMY · TABLE', 'LIVE'],
   result: ['BLACKJACK · RESULT', 'LIVE'],
   settings: ['SETTINGS', ''],
   account: ['ACCOUNT', ''],
@@ -70,7 +79,7 @@ const STATUS = {
 // Which side the dog docks on, per screen (matches the wireframe).
 const DOG_SIDE = {
   identity: 'right', lobby: 'left', betting: 'right',
-  table: 'left', result: 'left', account: 'right',
+  table: 'left', rummy: 'left', result: 'left', account: 'right',
 };
 const DOG_HIDDEN = ['boot', 'room', 'settings'];
 
@@ -263,6 +272,7 @@ $('#genCode').addEventListener('click', async () => {
   try {
     const code = await net.connect({
       create: true,
+      game: session.game,
       nickname: session.nickname,
       startingChips: session.startingChips,
       tableSpeed: session.tableSpeed,
@@ -364,6 +374,7 @@ const escape = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '
 // mid-room is cosmetic — they apply to the next room you create.)
 bindSeg('#setMax', (v) => { session.maxPlayers = Number(v); });
 bindSeg('#setSpeed', (v) => { session.tableSpeed = v; });
+bindSeg('#gamePick', (v) => { session.game = v; });
 $('#startChips').addEventListener('change', (e) => {
   session.startingChips = Number(e.target.value);
   session.chips = session.startingChips;
@@ -402,7 +413,16 @@ function connectError(e) {
 // the room is in right now.
 function enterGame() {
   entered = true;
-  net.onState = onServerState;
+  // Each game has its own reactor; the connection knows which room it joined.
+  const react = net.game === 'rummy' ? onRummyState : onServerState;
+  net.onState = react;
+  net.onHand = (cards) => {
+    // Your own cards, delivered privately — the shared state never carries
+    // them. Picks are dropped: they referenced the previous hand.
+    rummy.hand = rules.sortHand(cards);
+    rummy.picks = [];
+    if (current === 'rummy') renderRummy();
+  };
   net.onLeave = () => {
     // The room went away (server slept, or a redeploy dropped the socket).
     if (!entered) return;
@@ -410,7 +430,7 @@ function enterGame() {
     dog.say('chips_low');
     go('lobby');
   };
-  if (state) onServerState(state);
+  if (state) react(state);
 }
 
 // The single reactor: every state push routes the UI to the right screen and
@@ -637,7 +657,11 @@ document.addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------------------
 function paintDeadline() {
   stopClock();
-  const el = current === 'betting' ? $('#betTimer') : current === 'table' ? $('#turnTimer') : null;
+  const el =
+    current === 'betting' ? $('#betTimer')
+    : current === 'table' ? $('#turnTimer')
+    : current === 'rummy' ? $('#rTimer')
+    : null;
   if (!el || !state?.deadline) {
     if (el) el.textContent = '';
     return;
@@ -739,16 +763,229 @@ $('#nextHand').addEventListener('click', () => {
 // Leaving the table has to leave the server room, not just change screens — a
 // data-go would keep the seat and the reactor would pull you back on the next
 // patch. Stop reacting, disconnect, then return to the lobby.
-$('#leaveTable').addEventListener('click', async () => {
+async function leaveTable() {
   entered = false;
   net.onState = () => {};
   net.onLeave = () => {};
   betSent = false;
   narratedTurn = null;
   lastPhase = null;
+  rummy.hand = [];
+  rummy.picks = [];
+  rummy.layoffMode = false;
+  rummy.narrated = null;
   await net.leave();
   go('lobby');
+}
+$('#leaveTable').addEventListener('click', leaveTable);
+$('#rLeave').addEventListener('click', leaveTable);
+
+// ---------------------------------------------------------------------------
+// 1k — Rummy table
+//
+// Driven by two inputs: the shared state (whose turn, what's on the table) and
+// the private `hand` message (your cards — the shared state never carries
+// them). Picking cards is local; every move is an intent the server validates.
+// ---------------------------------------------------------------------------
+const rKey = (c) => c.rank + c.suit;
+const rMe = () => state?.players.find((p) => p.isYou) ?? null;
+const rPicked = () => rummy.hand.filter((c) => rummy.picks.includes(rKey(c)));
+
+function onRummyState(s) {
+  state = s;
+  if (!entered) return;
+
+  if (s.phase === 'playing') {
+    if (current !== 'rummy') {
+      goGame('rummy');
+      dog.say('rummy_dealt');
+    }
+    renderRummy();
+  } else if (s.phase === 'resolved') {
+    if (current !== 'rummy') goGame('rummy');
+    renderRummy();
+    if (lastPhase !== 'resolved') showRummyResult();
+  }
+  lastPhase = s.phase;
+  paintDeadline();
+}
+
+function showRummyResult() {
+  const me = rMe();
+  if (!me) return;
+  if (me.result === 'win') dog.say('rummy_win');
+  else if (me.result === 'push') dog.say('rummy_stalemate');
+  else if (me.result) dog.say('rummy_loss');
+
+  // Fold the hand into the session record, same shape blackjack uses.
+  session.chips = me.chips;
+  if (me.result === 'win') session.stats.wins++;
+  else if (me.result === 'push') session.stats.pushes++;
+  else if (me.result) session.stats.losses++;
+  session.history.unshift({ room: session.roomCode, payout: me.payout });
+
+  if (account.user && me.result) {
+    const p = account.profile ?? { nickname: session.nickname, chips: 0, wins: 0, losses: 0, pushes: 0 };
+    account.profile = {
+      nickname: session.nickname,
+      chips: p.chips + me.payout,
+      wins: p.wins + (me.result === 'win' ? 1 : 0),
+      losses: p.losses + (me.result === 'loss' ? 1 : 0),
+      pushes: p.pushes + (me.result === 'push' ? 1 : 0),
+    };
+    auth.syncProfile(account.user.id, account.profile).catch(() => {});
+    auth.recordHand(account.user.id, { roomCode: session.roomCode, result: me.result, payout: me.payout }).catch(() => {});
+  }
+  renderAccount();
+}
+
+function rOutcome(p) {
+  if (!p?.result) return '';
+  if (p.result === 'win') return `OUT · +${p.payout}`;
+  if (p.result === 'push') return 'stalemate';
+  return `${p.deadwood} left · ${p.payout}`;
+}
+
+function renderRummy() {
+  if (!state || state.game !== 'rummy') return;
+  const me = rMe();
+  const myTurn = state.turn === myId();
+  const drawing = state.turnPhase === 'draw';
+  const resolved = state.phase === 'resolved';
+  const picks = rPicked();
+
+  // Opponents: a name and a card count, because that is all the server sends.
+  $('#rOpponents').innerHTML = state.players
+    .filter((p) => !p.isYou)
+    .map((p) => `
+      <div class="opponent" ${state.turn === p.id ? 'data-turn' : ''}>
+        ${escape(p.nickname)}${p.connected === false ? ' · away' : ''}
+        <div class="cards">${Array.from({ length: Math.min(p.handCount, 12) }, () => '<div class="card card--back card--sm"></div>').join('')}</div>
+        <div>${resolved ? rOutcome(p) : `${p.handCount} cards`}</div>
+      </div>`)
+    .join('');
+
+  $('#rStockCount').textContent = String(state.stockCount);
+  $('#rDiscard').innerHTML = state.discardTop
+    ? cardEl(state.discardTop, 'card--dealt')
+    : '<div class="card card--back" style="opacity:.35"></div>';
+  $('#rDiscardHint').textContent = state.discardTop ? `${state.discardCount} deep` : 'empty';
+
+  // Melds are public. In lay-off mode the ones your pick fits light up.
+  $('#rMelds').innerHTML =
+    state.melds
+      .map((m) => {
+        const target = rummy.layoffMode && picks.length === 1 && rules.canLayOff(m, picks[0]);
+        const owner = state.players.find((p) => p.id === m.ownerId);
+        return `
+        <div class="meld" data-meld="${m.id}" ${target ? 'data-target' : ''}>
+          <div class="cards">${m.cards.map((c) => cardEl(c, 'card--sm')).join('')}</div>
+          <span class="owner">${escape(owner?.nickname ?? '—')}</span>
+        </div>`;
+      })
+      .join('') || '<span class="hint">no melds down yet</span>';
+
+  // Your hand — the only cards anyone sends you.
+  $('#rHand').innerHTML = rummy.hand
+    .map((c) => {
+      const picked = rummy.picks.includes(rKey(c));
+      return cardEl(c, `card--dealt ${picked ? 'card--pick' : ''}`).replace(
+        '<div class="card',
+        `<div role="button" tabindex="0" data-card="${rKey(c)}" class="card`,
+      );
+    })
+    .join('');
+
+  $('#rDeadwood').textContent = `DEADWOOD · ${rules.deadwood(rummy.hand)}`;
+  $('#rPrompt').textContent = resolved
+    ? rOutcome(me)
+    : !myTurn
+      ? 'waiting…'
+      : drawing
+        ? 'draw a card'
+        : rummy.layoffMode
+          ? 'pick a meld to extend'
+          : 'meld, or discard to end your turn';
+
+  // Only offer what is actually legal right now.
+  const canAct = myTurn && !resolved;
+  $('#rDrawStock').disabled = !canAct || !drawing || state.stockCount === 0;
+  $('#rTakeDiscard').disabled = !canAct || !drawing || !state.discardTop;
+  $('#rMeld').disabled = !canAct || drawing || !rules.isValidMeld(picks);
+  $('#rLayoff').disabled = !canAct || drawing || picks.length !== 1 || state.melds.length === 0;
+  $('#rLayoff').setAttribute('aria-pressed', String(rummy.layoffMode));
+  $('#rDiscardBtn').disabled = !canAct || drawing || picks.length !== 1;
+
+  // Narrate a turn once, when it becomes yours.
+  const beat = `${state.turn}:${state.turnPhase}`;
+  if (myTurn && !resolved && rummy.narrated !== beat) {
+    rummy.narrated = beat;
+    dog.say(drawing ? 'rummy_your_draw' : 'rummy_your_act');
+  } else if (!myTurn) {
+    rummy.narrated = null;
+  }
+}
+
+// --- picking cards ---------------------------------------------------------
+function togglePick(key) {
+  const i = rummy.picks.indexOf(key);
+  if (i === -1) rummy.picks.push(key);
+  else rummy.picks.splice(i, 1);
+  renderRummy();
+}
+$('#rHand').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-card]');
+  if (el) togglePick(el.dataset.card);
 });
+$('#rHand').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest('[data-card]');
+  if (!el) return;
+  e.preventDefault();
+  togglePick(el.dataset.card);
+});
+
+// --- moves: intents, validated server-side ---------------------------------
+$('#rDrawStock').addEventListener('click', () => {
+  if ($('#rDrawStock').disabled) return;
+  net.send('draw', { source: 'stock' });
+});
+$('#rTakeDiscard').addEventListener('click', () => {
+  if ($('#rTakeDiscard').disabled) return;
+  dog.say('rummy_drew_discard');
+  net.send('draw', { source: 'discard' });
+});
+$('#rMeld').addEventListener('click', () => {
+  if ($('#rMeld').disabled) return;
+  dog.say('rummy_you_meld');
+  net.send('meld', { cards: rPicked().map(rKey) });
+  rummy.picks = [];
+});
+$('#rDiscardBtn').addEventListener('click', () => {
+  if ($('#rDiscardBtn').disabled) return;
+  net.send('discard', { card: rKey(rPicked()[0]) });
+  rummy.picks = [];
+});
+// Lay off needs two choices — a card, then a meld — so the button arms a mode
+// and the next meld click completes it.
+$('#rLayoff').addEventListener('click', () => {
+  if ($('#rLayoff').disabled) return;
+  rummy.layoffMode = !rummy.layoffMode;
+  renderRummy();
+});
+$('#rMelds').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-meld]');
+  if (!el || !rummy.layoffMode) return;
+  const card = rPicked()[0];
+  if (!card) return;
+  dog.say('rummy_you_layoff');
+  net.send('layoff', { card: rKey(card), meldId: Number(el.dataset.meld) });
+  rummy.picks = [];
+  rummy.layoffMode = false;
+});
+// Clicking the piles is the same as the buttons — the obvious gesture works.
+$('#rStock').addEventListener('click', () => $('#rDrawStock').click());
+$('#rDiscard').addEventListener('click', () => $('#rTakeDiscard').click());
 
 // ---------------------------------------------------------------------------
 // 1i — Settings

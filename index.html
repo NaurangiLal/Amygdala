@@ -430,6 +430,32 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
 .hand { display: flex; align-items: flex-end; gap: var(--space-2); }
 .hand .card { transform: rotate(var(--fan, 0deg)) translateY(var(--lift, 0)); transform-origin: bottom center; }
 
+/* Rummy holds ten-plus cards: a fan would overflow narrow screens, so the hand
+   lies flat and wraps instead. */
+.hand--fan-none { flex-wrap: wrap; justify-content: center; gap: var(--space-1); }
+.hand--fan-none .card { transform: none; }
+
+/* A card you've picked for a meld / lay-off / discard. Lifted and lit rather
+   than recoloured — the palette is one green, so selection reads as brightness. */
+.card--pick {
+  border-color: var(--green-bright);
+  color: var(--text-strong);
+  box-shadow: 0 0 12px var(--glow-green-2), inset 0 0 0 1px var(--green-bright);
+  transform: translateY(-8px) !important;
+}
+.card[role="button"] { cursor: pointer; }
+.card[role="button"]:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 2px; }
+
+/* Melds already laid down — public to the whole table. */
+.melds { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); min-height: 56px; }
+.meld {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: var(--space-2); border: 1px solid var(--border-dim); background: rgba(12, 62, 34, .18);
+}
+.meld[data-target] { border-color: var(--green-bright); box-shadow: 0 0 10px var(--glow-green-2); cursor: pointer; }
+.meld .cards { display: flex; gap: 3px; }
+.meld .owner { font-family: var(--font-pixel); font-size: .75rem; color: var(--text-muted); }
+
 /* Betting chips */
 .chip {
   width: 40px; height: 40px; border-radius: 50%; flex: none;
@@ -464,7 +490,10 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
 .dogwrap[hidden] { display: none; }
 /* On screens that end in a full-width command bar, the dog sits above it —
    docked in the same corner, but never covering an action. */
-.dogwrap[data-screen="table"], .dogwrap[data-screen="result"] { bottom: 76px; }
+.dogwrap[data-screen="table"],
+.dogwrap[data-screen="result"] { bottom: 76px; }
+/* Rummy's bar carries more controls and can wrap, so it needs more room. */
+.dogwrap[data-screen="rummy"] { bottom: 116px; }
 
 .bubble {
   position: relative;
@@ -731,6 +760,7 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
   .dogwrap,
   .dogwrap[data-side="left"],
   .dogwrap[data-screen="table"],
+  .dogwrap[data-screen="rummy"],
   .dogwrap[data-screen="result"] {
     position: static;
     inset: auto;
@@ -815,7 +845,7 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
               <span class="hud muted">Game</span>
               <div class="seg" id="gamePick" role="group" aria-label="Game type">
                 <button type="button" aria-pressed="true" data-game="blackjack">BLACKJACK</button>
-                <button type="button" aria-pressed="false" data-game="rummy" disabled>RUMMY ·soon</button>
+                <button type="button" aria-pressed="false" data-game="rummy">RUMMY</button>
               </div>
             </div>
             <label class="field-row" for="maxPlayers">
@@ -954,6 +984,48 @@ select.field option { background: var(--crt-black); color: var(--text-strong); }
           <button class="btn" data-move="double" type="button">DOUBLE</button>
           <button class="btn" data-move="split" type="button" disabled title="Split lands after v1">SPLIT</button>
           <span class="chip chip--timer" id="turnTimer" style="margin-left: var(--space-2);">0:12</span>
+        </div>
+      </section>
+
+      <!-- ============ 1k · RUMMY TABLE ============
+           Your hand is the only one you can see — everyone else is a card
+           count, because the server never sends anyone else's cards. -->
+      <section class="screen" data-screen="rummy" style="gap: var(--space-3);">
+        <div class="opponents" id="rOpponents"></div>
+
+        <div class="row row--center" style="gap: var(--space-5); align-items: flex-start;">
+          <div class="dealer-block">
+            <span class="lbl">Stock</span>
+            <div class="card card--back" id="rStock" role="button" tabindex="0"
+                 aria-label="Draw from the stock"></div>
+            <span class="chipbox" id="rStockCount">52</span>
+          </div>
+          <div class="dealer-block">
+            <span class="lbl">Discard</span>
+            <div id="rDiscard"></div>
+            <span class="chipbox" id="rDiscardHint">take</span>
+          </div>
+        </div>
+
+        <div class="melds" id="rMelds"></div>
+
+        <div class="you-block">
+          <div class="hand hand--fan-none" id="rHand"></div>
+          <div class="row" style="gap: var(--space-2);">
+            <span class="lbl">You</span>
+            <span class="chipbox chipbox--strong" id="rDeadwood">DEADWOOD · 0</span>
+            <span class="chipbox" id="rPrompt">draw a card</span>
+          </div>
+        </div>
+
+        <div class="actionbar">
+          <button class="btn btn--primary" id="rDrawStock" type="button">DRAW STOCK</button>
+          <button class="btn" id="rTakeDiscard" type="button">TAKE DISCARD</button>
+          <button class="btn" id="rMeld" type="button">MELD</button>
+          <button class="btn" id="rLayoff" type="button">LAY OFF</button>
+          <button class="btn" id="rDiscardBtn" type="button">DISCARD</button>
+          <span class="chip chip--timer" id="rTimer" style="margin-left: var(--space-2);">0:30</span>
+          <button class="btn btn--amber btn--sm" id="rLeave" type="button">LEAVE</button>
         </div>
       </section>
 

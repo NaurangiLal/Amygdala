@@ -2,11 +2,14 @@
 // uniform engine — it never imports a game folder directly (PRD §4).
 import blackjack from './blackjack/engine.mjs';
 import blackjackLines from './blackjack/lines.mjs';
+import rummyLines from './rummy/lines.mjs';
+import * as rummyRules from './rummy/rules.mjs';
 
 export const CATALOG = [
   { id: 'blackjack', name: 'Blackjack', phase: 1, available: true, engine: blackjack, lines: blackjackLines },
-  // Phase 2. Surfaces in the UI as disabled until the engine lands.
-  { id: 'rummy', name: 'Rummy', phase: 2, available: false, engine: null, lines: null },
+  // Phase 2. The rules engine is server-side (packages/game-rules); the client
+  // carries only the dog's lines and the pure meld helpers the UI needs.
+  { id: 'rummy', name: 'Rummy', phase: 2, available: true, engine: null, rules: rummyRules, lines: rummyLines },
   // Future modules — the folder shape already accepts them (PRD §4).
   { id: 'bluff', name: 'Bluff', phase: null, available: false, engine: null, lines: null },
   { id: 'poker', name: 'Poker', phase: null, available: false, engine: null, lines: null },

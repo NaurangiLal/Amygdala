@@ -21,7 +21,8 @@ export function serverUrl() {
   return null;
 }
 
-const ROOM = 'blackjack';
+/** Room names match the game ids the server registered (app.config.ts). */
+const ROOMS = { blackjack: 'blackjack', rummy: 'rummy' };
 
 /** A dealer/player card as it arrives: a face-down hole card has empty fields —
  *  render it as a card back (null), never as a blank card. */
@@ -68,13 +69,58 @@ export function adapt(s, myId) {
   };
 }
 
+/**
+ * Reshape the synced Rummy state for rendering. Note what ISN'T here: nobody
+ * else's cards, because the server never sends them — an opponent is a count.
+ * Your own hand arrives separately, via the private `hand` message.
+ */
+export function adaptRummy(s, myId) {
+  const players = [];
+  s.players.forEach((p, id) => {
+    players.push({
+      id,
+      nickname: p.nickname,
+      isYou: id === myId,
+      isBot: p.isBot,
+      connected: p.connected,
+      chips: p.chips,
+      handCount: p.handCount,
+      result: p.result || null,
+      deadwood: p.deadwood,
+      payout: p.payout,
+    });
+  });
+  return {
+    game: 'rummy',
+    phase: s.phase,
+    turn: s.turn || null,
+    turnPhase: s.turnPhase,
+    deadline: s.deadline,
+    stockCount: s.stockCount,
+    discardCount: s.discardCount,
+    discardTop: s.hasDiscardTop ? { ...s.discardTop } : null,
+    melds: [...s.melds].map((m) => ({
+      id: m.id,
+      ownerId: m.ownerId,
+      kind: m.kind,
+      cards: [...m.cards].map((c) => ({ rank: c.rank, suit: c.suit, glyph: c.glyph, fill: c.fill })),
+    })),
+    settings: { startingChips: s.settings.startingChips, tableSpeed: s.settings.tableSpeed },
+    results: s.results ? [...s.results].map((r) => ({ id: r.id, result: r.result, payout: r.payout, chips: r.chips })) : null,
+    players,
+  };
+}
+
 export class Net {
   constructor() {
     this.client = null;
     this.room = null;
     this.myId = null;
+    this.game = 'blackjack';
     this.onState = () => {};
     this.onLeave = () => {};
+    /** Rummy only: your own cards, which never ride in the shared state. */
+    this.onHand = () => {};
   }
 
   get roomCode() {
@@ -83,18 +129,25 @@ export class Net {
 
   /** Create a new table (host) or join an existing one by its code. Resolves
    *  once connected; the first state arrives via onState right after. */
-  async connect({ create, code, nickname, startingChips, tableSpeed, maxPlayers }) {
+  async connect({ create, code, game = 'blackjack', nickname, startingChips, tableSpeed, maxPlayers }) {
     const url = serverUrl();
     if (!url) throw new Error('NO_SERVER');
     this.client = new Client(url);
     const options = { nickname, startingChips, tableSpeed, maxPlayers };
+    this.game = game;
 
+    // Joining by code doesn't say which game the room runs — the room itself
+    // knows, and the state it sends back identifies it.
     this.room = create
-      ? await this.client.create(ROOM, options)
+      ? await this.client.create(ROOMS[game] ?? ROOMS.blackjack, options)
       : await this.client.joinById(code, options);
     this.myId = this.room.sessionId;
+    if (!create) this.game = this.room.name ?? game;
 
-    this.room.onStateChange((state) => this.onState(adapt(state, this.myId)));
+    const shape = (state) =>
+      this.game === 'rummy' ? adaptRummy(state, this.myId) : adapt(state, this.myId);
+    this.room.onStateChange((state) => this.onState(shape(state)));
+    this.room.onMessage('hand', (payload) => this.onHand(payload?.cards ?? []));
     this.room.onLeave((codeNum) => this.onLeave(codeNum));
     return this.roomCode;
   }
